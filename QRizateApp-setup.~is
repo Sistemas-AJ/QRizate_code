@@ -1,0 +1,42 @@
+; Script de Inno Setup para la aplicación QRizate
+; Guarda este archivo como QRizateApp-setup.iss
+
+[Setup]
+; Información general del instalador
+AppName=QRizate Backend
+AppVersion=1.0.0
+AppPublisher=Adrian Ruiz Carreño
+AppPublisherURL=https://github.com/AdrianRuizC
+AppSupportURL=https://github.com/AdrianRuizC
+AppUpdatesURL=https://github.com/AdrianRuizC
+DefaultDirName={autopf}\QRizate Backend
+DefaultGroupName=QRizate Backend
+AllowNoIcons=yes
+
+; Opciones del instalador
+OutputBaseFilename=QRizate-Installer
+Compression=lzma
+SolidCompression=yes
+WizardStyle=modern
+
+[Files]
+; Archivos a incluir en el instalador
+; La ruta de origen (Source) es relativa a la ubicación de este script .iss
+Source: "dist\QRizateApp.exe"; DestDir: "{app}"
+
+
+[Icons]
+; Crea accesos directos
+Name: "{group}\QRizate Backend"; Filename: "{app}\QRizateApp.exe"
+Name: "{autodesktop}\QRizate Backend"; Filename: "{app}\QRizateApp.exe"; Tasks: desktopicon
+
+[Tasks]
+; Permite al usuario elegir si quiere un acceso directo en el escritorio
+Name: "desktopicon"; Description: "Crear un &acceso directo en el escritorio"; GroupDescription: "Opciones adicionales:"; Flags: unchecked
+
+[Run]
+; Ejecuta la aplicación al final de la instalación
+Filename: "{app}\QRizateApp.exe"; Description: "Lanzar QRizate Backend"; Flags: postinstall nowait
+
+[Languages]
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"

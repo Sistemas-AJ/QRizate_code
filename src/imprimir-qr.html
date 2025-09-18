@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Imprimir QRs</title>
+  <link rel="stylesheet" href="./css/canva.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+  <div class="main-flex">
+    <div id="panel-config" class="panel-config panel-config-fixed">
+      <h2>Configuración de impresión</h2>
+      <div class="panel-group panel-search">
+        <label for="qr-id-input" class="filtro-codigo-label"><span class="filtro-codigo-icon"><i class="fa-solid fa-magnifying-glass"></i></span>Filtrar por código:</label>
+        <input type="text" id="qr-id-input" class="filtro-codigo-input" placeholder="Ej: QR-...">
+      </div>
+      <div class="panel-group">
+        <label for="grid-rows">Filas:</label>
+        <input type="number" id="grid-rows" min="1" max="7" value="7">
+      </div>
+      <div class="panel-group">
+        <label for="grid-cols">Columnas:</label>
+        <input type="number" id="grid-cols" min="1" max="6" value="6">
+      </div>
+      <button onclick="aplicarGrilla()" class="btn btn-primary">Aplicar grilla</button>
+      <button onclick="window.print()" class="btn btn-success">Imprimir</button>
+      <button onclick="guardarComoPDF()" id="btn-pdf" class="btn btn-secondary">Guardar como PDF</button>
+      <button onclick="window.location.href='index.html'" class="btn btn-light">Inicio</button>
+    </div>
+    <div class="panel-preview">
+      <div id="preview-container">
+        <!-- Aquí se generarán dinámicamente las hojas de previsualización -->
+      </div>
+    </div>
+  </div>
+
+  <style>
+  .a4-sheet {
+    width: 210mm;
+    min-height: 297mm;
+    max-width: 100%;
+    box-sizing: border-box;
+    background: white;
+    margin: 0 auto 24px auto;
+    padding: 0;
+    /* overflow: hidden; */
+    position: relative;
+    display: block;
+    border: 2px dashed #e74c3c; /* Borde de depuración, puedes quitarlo luego */
+  }
+  .qr-grid {
+    height: 100%;
+    min-height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    display: block;
+  }
+  .panel-config-fixed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1500;
+    margin: 0;
+    height: 100vh;
+    min-width: 260px;
+    max-width: 320px;
+    box-shadow: 2px 0 12px #0001;
+    border-radius: 0 12px 12px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding-top: 32px;
+  }
+  .main-flex {
+    margin-left: 320px;
+  }
+.panel-search {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #edf2f7;
+}
+.filtro-codigo-label {
+  font-weight: 200;
+  color: #003B67;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.filtro-codigo-icon {
+  font-size: 1.2em;
+  color: #FF6B00;
+  margin-right: 2px;
+}
+.filtro-codigo-input {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 2px solid #dbe2ea;
+  font-size: 15px;
+  outline: none;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 59, 103, 0.05);
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+.filtro-codigo-input:focus {
+  border-color: #FF6B00;
+  box-shadow: 0 4px 12px rgba(255, 107, 0, 0.15);
+}
+.filtro-codigo-input::placeholder {
+  color: #90a4ae;
+}
+  @media (max-width: 700px) {
+    .filtro-codigo-bar {
+      right: 8px;
+      top: 8px;
+      padding: 4px 8px 4px 8px;
+      gap: 6px;
+    }
+    .filtro-codigo-input {
+      width: 110px;
+      font-size: 13px;
+      padding: 5px 8px;
+    }
+    .filtro-codigo-label { font-size: 13px; }
+  }
+  @media print {
+    #titulo-previa {
+      display: none !important;
+    }
+    .a4-sheet:not(:last-child) {
+      page-break-after: always;
+      break-after: page;
+    }
+    .a4-sheet {
+      display: block !important;
+      border: 2px solid #3498db !important; /* Borde azul para depuración impresión */
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+      padding: 0 !important;
+    }
+    .panel-config, .filtro-codigo-bar, .main-flex > .panel-config, .main-flex > .filtro-codigo-bar {
+      display: none !important;
+    }
+    body, html {
+      background: white !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    #preview-container {
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+    }
+    @page {
+      margin: 0;
+    }
+  }
+  </style>
+  <script>
+    // Obtener IP y puerto de localStorage o usar valores por defecto
+    let ip = localStorage.getItem('qr_app_ip') || '127.0.0.1';
+    let port = localStorage.getItem('qr_app_port') || '8000';
+    let qrItems = [];
+    let qrRawData = [];
+
+
+
+      function renderQRCard(item) {
+        const id = item.id || item.codigo_activo || item.codigo || '';
+        const codigo = item.codigo_activo || item.codigo || item.id || '';
+        const url = `http://${ip}:${port}/activos/detalle/${id}`;
+        const qrDivId = `qrgen_${id}`;
+        // Solo el div para QRious, sin imagen del backend
+        return `<div class='qr-card'>
+          <div id='${qrDivId}' class='qr-canvas-holder' style='width:100px;height:100px;margin:0 auto 2px auto; margin-bottom: 0px;'></div>
+          <a href='${url}' target='_blank' style='color:#000000;text-decoration:none; font-size:10px;'>${codigo}</a><br>
+        </div>`;
+      }
+
+      // Generar todos los QRs con QRious en los divs de la grilla
+      function generarTodosLosQRs() {
+        qrRawData.forEach(item => {
+          const id = item.id || item.codigo_activo || item.codigo || '';
+          const url = `http://${ip}:${port}/activos/detalle/${id}`;
+          const qrDivId = `qrgen_${id}`;
+          const qrDiv = document.getElementById(qrDivId);
+          if (qrDiv) {
+            qrDiv.innerHTML = '';
+            new window.QRious({
+              element: (() => {
+                const c = document.createElement('canvas');
+                qrDiv.appendChild(c);
+                return c;
+              })(),
+              value: url,
+              size: 120,
+              background: 'white',
+              foreground: '#000000',
+              level: 'M'
+            });
+          }
+        });
+      }
+
+      // Función global para generar canvas QR limpio con qrious si falla la imagen
+      window.makeQrCanvas = function(divId, text) {
+        if (!window.QRious) return;
+        var qrDiv = document.getElementById(divId);
+        if (qrDiv) {
+          qrDiv.style.display = 'block';
+          qrDiv.innerHTML = '';
+          var canvas = document.createElement('canvas');
+          qrDiv.appendChild(canvas);
+          var qr = new window.QRious({
+            element: canvas,
+            value: text,
+            size: 120,
+            background: 'white',
+            foreground: '#000000',
+            level: 'M'
+          });
+        }
+      }
+
+    async function cargarQRs() {
+      try {
+        const response = await fetch(`http://${ip}:${port}/activos/`);
+        if (!response.ok) throw new Error("Network response was not ok");
+        const data = await response.json();
+        // Filtrar solo los que tengan id o codigo_activo válido
+        qrRawData = data.filter(item => (item.id || item.codigo_activo || item.codigo) && (item.codigo_activo !== 'string' && item.codigo !== 'string'));
+        qrItems = qrRawData.map(renderQRCard);
+        aplicarGrilla();
+      } catch (e) {
+        var data = localStorage.getItem('qr_print_items');
+        if (!data) return;
+        const parsed = JSON.parse(data);
+        qrRawData = parsed.filter(item => (item.id || item.codigo_activo || item.codigo) && (item.codigo_activo !== 'string' && item.codigo !== 'string'));
+        qrItems = qrRawData.map(renderQRCard);
+        aplicarGrilla();
+      }
+    }
+
+function aplicarGrilla(filtrado = null) {
+  const previewContainer = document.getElementById('preview-container');
+  previewContainer.innerHTML = '';
+  const rows = parseInt(document.getElementById('grid-rows').value) || 2;
+  const cols = parseInt(document.getElementById('grid-cols').value) || 3;
+  const itemsPerPage = rows * cols;
+  const items = filtrado || qrRawData.map(renderQRCard);
+  const totalItems = items.length;
+  const numPages = Math.ceil(totalItems / itemsPerPage);
+
+  let actualPage = 0;
+  let idx = 0;
+  while (idx < totalItems) {
+    // Crear hoja y grilla temporalmente
+    const sheet = document.createElement('div');
+    sheet.className = 'a4-sheet';
+    const grid = document.createElement('div');
+    grid.className = 'qr-grid';
+    grid.style.height = '100%';
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+    grid.style.gap = '0';
+    let tieneQR = false;
+    for (let i = 0; i < itemsPerPage; i++) {
+      const div = document.createElement('div');
+      div.className = 'qr-item';
+      if (idx < totalItems && items[idx] && items[idx].trim() !== '') {
+        div.innerHTML = items[idx];
+        tieneQR = true;
+      } else {
+        div.innerHTML = '';
+      }
+      grid.appendChild(div);
+      idx++;
+    }
+    // Solo agregar la hoja si realmente tiene al menos un QR
+    if (tieneQR) {
+      sheet.appendChild(grid);
+      previewContainer.appendChild(sheet);
+      actualPage++;
+    }
+    // Si no tiene QR, no se agrega y no se incrementa actualPage
+  }
+  // Generar los QRs visibles en todas las hojas
+  setTimeout(() => {
+    // Para cada hoja, generar los QRs
+    const allSheets = previewContainer.querySelectorAll('.a4-sheet');
+    allSheets.forEach(sheet => {
+      const grid = sheet.querySelector('.qr-grid');
+      if (!grid) return;
+      // Buscar todos los divs de QR y generar el canvas
+      const qrDivs = grid.querySelectorAll('.qr-canvas-holder');
+      qrDivs.forEach(qrDiv => {
+        const divId = qrDiv.id;
+        // Buscar el item correspondiente
+        let item = null;
+        if (divId.startsWith('qrgen_')) {
+          const id = divId.replace('qrgen_', '');
+          item = qrRawData.find(it => (it.id || it.codigo_activo || it.codigo || '') == id);
+        }
+        if (item && window.QRious) {
+          qrDiv.innerHTML = '';
+          new window.QRious({
+            element: (() => {
+              const c = document.createElement('canvas');
+              qrDiv.appendChild(c);
+              return c;
+            })(),
+            value: `http://${ip}:${port}/activos/detalle/${item.id || item.codigo_activo || item.codigo || ''}`,
+            size: 120,
+            background: 'white',
+            foreground: '#000000',
+            level: 'M'
+          });
+        }
+      });
+    });
+  }, 100);
+}
+
+    /**
+     * ✅ FUNCIÓN ACTUALIZADA PARA GENERAR PDF DE MÚLTIPLES PÁGINAS
+     */
+    async function guardarComoPDF() {
+      const btn = document.getElementById('btn-pdf');
+      const originalText = btn.innerHTML;
+
+      btn.disabled = true;
+      btn.innerHTML = 'Generando...';
+
+      // Obtener todas las hojas de la previsualización
+      const sheets = Array.from(document.querySelectorAll('.a4-sheet'));
+      if (sheets.length === 0) {
+        alert("No hay QRs para generar el PDF.");
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        return;
+      }
+
+      // Inicializar el PDF
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      for (let i = 0; i < sheets.length; i++) {
+        const sheet = sheets[i];
+        // Esperar a que los canvas estén listos (por si acaso)
+        await new Promise(res => setTimeout(res, 200));
+
+        // Capturar la hoja original (con canvas QR) como imagen
+        const canvas = await html2canvas(sheet, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+
+        // Añadir la imagen al PDF
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      }
+
+      // Guardar el PDF final
+      pdf.save(`codigos-qr (${sheets.length} hojas).pdf`);
+
+      // Restaurar el botón
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const input = document.getElementById('qr-id-input');
+      if (input) {
+        input.addEventListener('input', function() {
+          const val = input.value.trim().toLowerCase();
+          // Filtrar por cualquier campo de código relevante
+          const filtrados = qrRawData.filter(item => {
+            const codigo = (item.codigo_activo || item.codigo || item.id || '').toLowerCase();
+            return codigo.includes(val);
+          });
+          aplicarGrilla(filtrados.map(renderQRCard));
+        });
+      }
+    });
+
+    // Cargar la librería QRCode si no está
+    if (!window.QRCode) {
+      var script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js';
+      script.onload = cargarQRs;
+      document.head.appendChild(script);
+    } else {
+      window.onload = cargarQRs;
+    }
+  </script>
+</body>
+</html>

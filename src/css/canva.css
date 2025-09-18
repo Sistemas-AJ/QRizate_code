@@ -1,0 +1,304 @@
+*{
+  overflow-x: hidden;
+  font-family: Arial;
+}
+
+/* Layout principal */
+.main-flex {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  min-height: 90vh;
+  background: #f4f6fa;
+}
+
+/* Panel de configuración */
+.panel-config {
+  min-width: 280px;
+  max-width: 320px;
+  margin: 32px 0 32px 32px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 60, 179, 0.1);
+  padding: 28px;
+  background: #fff;
+}
+.panel-config h2 {
+  margin: 0 0 24px 0;
+  font-size: 1.4em;
+  color: #003cb3;
+  border-bottom: 3px solid #FF6B00;
+  padding-bottom: 12px;
+}
+.panel-group {
+  margin-bottom: 24px;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.panel-group label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #003cb3;
+  font-size: 0.95em;
+}
+.panel-group input[type="number"] {
+  width: 80px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 2px solid #dbe2ea;
+  font-size: 1em;
+  transition: all 0.3s ease;
+  background: white;
+}
+.panel-group input[type="number"]:focus {
+  border-color: #FF6B00;
+  box-shadow: 0 2px 8px rgba(255, 107, 0, 0.1);
+  outline: none;
+}
+.btn {
+  width: 100%;
+  margin-bottom: 12px;
+  background: #ffffff;
+  color: #003cb3;
+  border: 2px solid #003cb3;
+  border-radius: 100px;
+  padding: 8px 22px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: #FF6B00;
+  color: #ffffff;
+  border-color: #FF6B00;
+}
+
+.btn-primary {
+  background: #ffffff;
+  color: #003cb3;
+  border: 2px solid #003cb3;
+}
+
+.btn-primary:hover {
+  background: #FF6B00;
+  color: #ffffff;
+  border-color: #FF6B00;
+}
+
+.btn-success {
+  background: #ffffff;
+  color: #003cb3;
+  border: 2px solid #003cb3;
+}
+
+.btn-success:hover {
+  background: #FF6B00;
+  color: #ffffff;
+  border-color: #FF6B00;
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: #003cb3;
+  border: 2px solid #003cb3;
+}
+
+.btn-secondary:hover {
+  background: #FF6B00;
+  color: #ffffff;
+  border-color: #FF6B00;
+}
+
+.btn-light {
+  background: #ffffff;
+  color: #003cb3;
+  border: 2px solid #003cb3;
+}
+
+.btn-light:hover {
+  background: #FF6B00;
+  color: #ffffff;
+  border-color: #FF6B00;
+}
+
+/* Panel de previsualización */
+.panel-preview {
+  flex: 1;
+  margin: 0 auto;
+  background-image: url('../assets/image.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px #0001;
+  padding: 0;
+  min-height: 80vh;
+  width: 21cm;
+  height: 29.7cm;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.a4-sheet {
+  background: #fff;
+  width: 21cm;
+  height: 29.7cm;
+  box-shadow: 0 4px 24px #0002;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  margin: 0 auto;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.a4-sheet h2 {
+  margin-top: 0;
+  font-size: 1.3em;
+  color: #2a3a4a;
+}
+
+/* Grilla de QRs */
+.qr-grid {
+  display: grid;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+  align-items: stretch;
+  justify-items: stretch;
+  box-sizing: border-box;
+  border: 2px solid #ffffff;
+  position: relative;
+  overflow: hidden;
+  max-width: 100%;
+  max-height: 100%;
+  /* Sin padding interno, la grilla ocupa todo el área útil */
+  padding: 0;
+  /* Forzar que las celdas se ajusten siempre al área disponible */
+  grid-auto-rows: 1fr;
+  grid-auto-columns: 1fr;
+}
+.qr-item {
+  border: 1px solid #b0b8c1;
+  border-radius: 0;
+  padding: 0px;
+  background: #ffffff;
+  min-width: 0;
+  min-height: 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.qr-card {
+  border-radius: 0;
+  padding: 0px;
+  background: #ffffff;
+  min-width: 0;
+  min-height: 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.qr-card img,
+.qr-card canvas {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 0px;
+  max-width: 100px;
+  max-height: 100px;
+}
+.qr-card canvas {
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+
+@media print {
+  html, body {
+    width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    font-family: Arial !important;
+  }
+  .main-flex {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  .panel-config {
+    display: none !important;
+  }
+  .panel-preview {
+    width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background-image: url('../assets/image.png') !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+  }
+  .a4-sheet {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: #fff !important;
+    display: block !important;
+    position: static !important;
+    page-break-after: always;
+    top: auto !important;
+    left: auto !important;
+  }
+  .qr-grid {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border-width: 3px !important;
+    border-style: solid !important;
+    border-color: #e74c3c !important;
+    background: #fff !important;
+    box-sizing: border-box !important;
+    gap: 0 !important;
+    align-items: stretch !important;
+    justify-items: stretch !important;
+  }
+  
+  @page {
+    size: A4;
+    margin: 0;
+  }
+}

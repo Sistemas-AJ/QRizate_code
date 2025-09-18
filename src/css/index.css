@@ -1,0 +1,535 @@
+:root {
+  --upao-blue: #003B67;
+  --upao-gold: #B4975A;
+  --upao-light-blue: #E5EEF4;
+  --upao-dark-gold: #8B744A;
+  --upao-light-gold: #F2EBD9;
+}
+
+/* ===== CONTENEDOR PRINCIPAL ===== */
+.main-container {
+  margin: 80px auto 40px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 90%;
+  max-width: 1200px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 59, 103, 0.2);
+  backdrop-filter: blur(10px);
+}
+/* ===== CONFIGURACIÓN DE RED (IP y PUERTO MANUAL) ===== */
+.config-red {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  border-radius: 15px;
+  border-top: 4px solid #FF6B00;
+  padding: 25px 40px;
+  margin-bottom: 36px;
+  font-size: 1.1rem;
+  position: relative;
+  min-width: 340px;
+  width: calc(100% - 80px);
+}
+.config-red::before {
+  content: "\1F5A7"; /* ícono de red */
+  font-size: 2.1rem;
+  color: #003cb3;
+  margin-right: 18px;
+  margin-left: -8px;
+}
+.config-red label {
+  color: #003cb3;
+  font-weight: 700;
+  font-size: 1.08rem;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.config-red input[type="text"],
+.config-red input[type="number"] {
+  padding: 12px 18px;
+  border: 2px solid #003cb3;
+  border-radius: 10px;
+  font-size: 1.08rem;
+  background: #fff;
+  margin-left: 0;
+  margin-right: 8px;
+  transition: border-color 0.22s, box-shadow 0.22s;
+  box-shadow: 0 1.5px 6px #003cb311;
+}
+.config-red input[type="text"]:focus,
+.config-red input[type="number"]:focus {
+  border-color: #005ce6;
+  background: #e9f1ff;
+  outline: none;
+  box-shadow: 0 2px 12px #003cb344;
+}
+.config-red span {
+  font-size: 0.98rem;
+  color: #003cb3;
+  margin-left: 18px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+@media (max-width: 700px) {
+  .config-red {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px 10px 12px 16px;
+    min-width: unset;
+  }
+  .config-red::before {
+    margin-bottom: 8px;
+    margin-right: 0;
+    font-size: 1.5rem;
+  }
+  .config-red label {
+    font-size: 1rem;
+  }
+  .config-red span {
+    margin-left: 0;
+    margin-top: 6px;
+    font-size: 0.93rem;
+  }
+}
+/* ===== ESTRUCTURA GENERAL ===== */
+body {
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: url('../assets/image.png') no-repeat center center fixed;
+  background-size: cover;
+  color: var(--upao-blue);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Franja naranja superior */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: #FF6B00;
+  z-index: 2000;
+}
+
+.app-bar {
+  background: var(--upao-blue);
+  color: white;
+  padding: 15px 30px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 59, 103, 0.2);
+}
+
+.app-bar__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: white;
+}
+
+.app-bar-btn {
+  background: var(--upao-gold);
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 8px;
+  margin-left: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.app-bar-btn:hover {
+  background: var(--upao-dark-gold);
+}
+
+.qrform {
+  width: 100%;
+  max-width: 800px;
+  padding: 30px;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 2px 15px rgba(0, 59, 103, 0.1);
+}
+
+.qrform-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 25px;
+  margin-top: 30px;
+}
+
+.qrform-input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid var(--upao-light-blue);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s;
+  margin-top: 8px;
+}
+
+.qrform-input:focus {
+  border-color: var(--upao-gold);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(180, 151, 90, 0.2);
+}
+
+.qrform-submit {
+  background: var(--upao-blue);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  width: 100%;
+}
+
+.qrform-submit:hover {
+  background: var(--upao-gold);
+  transform: translateY(-2px);
+}
+
+#qrcode {
+  margin-top: 30px;
+  padding: 25px;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 2px 15px rgba(0, 59, 103, 0.1);
+  text-align: center;
+}
+
+label {
+  color: var(--upao-blue);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 8px;
+}
+
+/* ===== APP BAR ===== */
+.app-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 64px;
+  background: linear-gradient(90deg, #003cb3 70%, #005ce6 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  border-bottom: 2px solid #ffffff30;
+}
+.app-bar-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.app-bar-btn {
+  background: #ffffff;
+    color: #003cb3;
+    border: 2px solid #003cb3;
+    border-radius: 100px;
+  padding: 8px 22px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+.app-bar-btn:hover {
+  background: #FF6B00;
+  color: #ffffff;
+}
+
+/* ===== CONTENIDO PRINCIPAL ===== */
+.main-content {
+  margin-top: 90px;
+  padding: 20px;
+}
+
+/* ===== FORMULARIO EN 2 COLUMNAS ===== */
+.qrform-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 36px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 36px 40px 24px 40px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  border: 1px solid #dce3ed;
+  justify-content: center;
+  align-items: center;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.qrform-grid > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.qrform-grid label {
+  font-weight: 600;
+  color: #003cb3;
+  font-size: 1rem;
+  margin-bottom: 8px;
+  text-align: center;
+  width: 100%;
+}
+
+.qrform-input {
+  width: 100%;
+  max-width: 250px;
+  padding: 10px 14px;
+  border: 1.5px solid #c4cdd5;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #f9fafb;
+  transition: all 0.25s ease;
+  text-align: center;
+}
+
+.qrform-input:focus {
+  border-color: #003cb3;
+  background: #e9f1ff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 60, 179, 0.1);
+}
+
+.qrform-full {
+  grid-column: span 2;
+}
+
+/* ===== BOTONES DEL FORMULARIO ===== */
+.qrform-btns {
+  text-align: center;
+  grid-column: span 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 20px;
+  margin-top: 10px;
+}
+
+.qrform-submit {
+  background: #003cb3;
+  color: #fff;
+  border: none;
+  border-radius: 100px;
+  padding: 12px 32px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.qrform-submit:hover {
+  background: #000000;
+  color: #fff;
+}
+
+/* ===== FORM BASE ===== */
+form#qrform {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 36px 0 36px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border: 1px solid #d0d7df;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+form#qrform label {
+  color: #1a1a1a;
+  font-weight: 500;
+  margin-bottom: 6px;
+  align-self: center;
+  width: 100%;
+  text-align: center;
+}
+form#qrform input[type="text"] {
+  padding: 10px 14px;
+  border: 1.5px solid #b0b8c1;
+  border-radius: 10px;
+  background: #ffffff;
+  font-size: 1rem;
+  margin-bottom: 14px;
+  transition: border-color 0.25s, background 0.25s;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 90%;
+  max-width: 320px;
+}
+form#qrform input[type="number"] {
+  padding: 10px 14px;
+  border: 1.5px solid #b0b8c1;
+  border-radius: 10px;
+  background: #ffffff;
+  font-size: 1rem;
+  margin-bottom: 14px;
+  transition: border-color 0.25s, background 0.25s;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 90%;
+  max-width: 320px;
+}
+form#qrform input[type="text"]:focus {
+  border-color: #003cb3;
+    background: #e9f1ff;
+}
+form#qrform button[type="submit"] {
+  background: linear-gradient(90deg, #003cb3 60%, #005ce6 100%);
+  color: #fff;
+  border: none;
+  padding: 16px 44px 16px 56px;
+  font-size: 1.18rem;
+  font-weight: 800;
+  border-radius: 100px;
+  cursor: pointer;
+  box-shadow: 0 8px 32px #003cb355, 0 2px 8px #003cb322;
+  letter-spacing: 0.7px;
+  transition: background 0.3s, box-shadow 0.2s, transform 0.1s;
+  outline: none;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+form#qrform button[type="submit"]::before {
+  content: "\1F5B1 "; /* Unicode QR icon */
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.4em;
+  color: #fff;
+  opacity: 0.85;
+  pointer-events: none;
+  transition: color 0.2s;
+}
+form#qrform button[type="submit"]::after {
+  content: '';
+  position: absolute;
+  left: -60%;
+  top: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(120deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 100%);
+  transform: skewX(-25deg);
+  transition: left 0.4s cubic-bezier(.4,1.5,.5,1);
+  z-index: 2;
+}
+form#qrform button[type="submit"]:hover::after {
+  left: 110%;
+}
+
+form#qrform button[type="submit"]:hover {
+  background: linear-gradient(90deg, #005ce6 60%, #003cb3 100%);
+  box-shadow: 0 12px 36px #003cb366, 0 2px 8px #003cb322;
+  transform: translateY(-2px) scale(1.04);
+  filter: brightness(1.08);
+}
+form#qrform button[type="submit"]:active {
+  background: #003cb3;
+  box-shadow: 0 2px 8px #003cb322;
+  transform: scale(0.98);
+}
+
+/* ===== QR VISUALIZATION AREA ===== */
+#qrcode {
+  min-width: 420px;
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    background: #ffffff;
+    border: 1px solid #d0d7df;
+    border-radius: 12px;
+  padding: 30px 0 10px 0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+.qr-flex {
+  display: flex;
+  overflow: hidden;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 40px;
+}
+/* ===== LISTADO DE TARJETAS QR ===== */
+#qrprint-section {
+  max-width: 900px;
+    margin: 40px auto 0;
+    padding: 24px;
+    background: #ffffff;
+    border: 1px solid #dce3ed;
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.05);
+}
+#qrprint-section h2 {
+  color: #1a1a1a;
+  margin-bottom: 16px;
+  font-size: 1.15rem;
+    font-weight: 600;
+}
+#qrprint-list {
+  display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+}
+.qr-item,
+#qrprint-list>div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: linear-gradient(135deg, #f4f6f8, #e8eff5);
+    border: 1.5px solid #003cb3;
+    padding: 18px 20px;
+  min-width: 200px;
+  min-height: 280px;
+  border-radius: 16px;
+    box-shadow: 0 8px 32px #003cb344, 0 2px 8px #003cb322;
+    font-size: 1.1rem;
+    color: #2a3a4a;
+    transition: all 0.3s ease;
+  position: relative;
+}
+.qr-item::before {
+  content: "\1F4F7";
+  font-size: 1.5em;
+    color: #003cb3;
+    opacity: 0.2;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+}
