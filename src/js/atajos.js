@@ -1,6 +1,7 @@
 function inicializarAtajos(canvas, fns) {
   let clipboard = null;
   let isInternalCopy = false;
+  window.canLeavePage = false; // <-- Bandera global para navegación controlada
 
   const copyObject = () => {
     const activeObject = canvas.getActiveObject();
@@ -124,7 +125,8 @@ function inicializarAtajos(canvas, fns) {
 
   // Listener para salir de la página
   window.addEventListener('beforeunload', (event) => {
-    if (historyIndex !== savedHistoryIndex) {
+    // Solo bloquea si hay cambios Y no se ha dado permiso explícito
+    if (historyIndex !== savedHistoryIndex && !window.canLeavePage) {
       event.preventDefault();
       event.returnValue = 'Hay cambios sin guardar. ¿Estás seguro de que quieres salir?';
       return event.returnValue;
