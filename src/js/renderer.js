@@ -1,37 +1,76 @@
-// src/js/renderer.js
+// Define aquí la URL pública y fija a la que apuntarán los QR de tus activos.
+const ASSET_PAGE_URL = 'https://qrizate.systempiura.com/asset.html';
 
 // Estado centralizado de la aplicación
 const AppState = {
-    autoApiBaseUrl: null, // La URL automática que nos da Electron
-    manualApiBaseUrl: null, // La URL que el usuario escribe
+    localIp: null, // La IP del PC en la red local
+    apiPort: null, // El puerto en el que corre el backend
+    manualApiBaseUrl: null, // La URL manual que el usuario escribe
 };
+
+const qrContainer = document.getElementById('qrcode');
+qrContainer.innerHTML = '';
+const canvas = document.createElement('canvas');
+canvas.width = 250;
+canvas.height = 250;
+qrContainer.appendChild(canvas);
 
 // --- INICIALIZACIÓN Y CONEXIÓN CON ELECTRON ---
 
-// 1. Escuchamos el puerto automático que nos envía main.js
+// 1. Recibimos el PUERTO del backend desde main.js
 window.electronAPI.onSetApiPort((port) => {
-    // Usamos la IP local en vez de 127.0.0.1 para que los QR funcionen en la red
-    AppState.autoApiBaseUrl = `http://127.0.0.1:${port}`; 
-    console.log(`🔌 Conexión automática establecida: ${AppState.autoApiBaseUrl}`);
-    updateConnectionStatus();
+    AppState.apiPort = port;
+    console.log(`🔌 Puerto del API recibido: ${port}`);
+    generatePairingQr(); // Intentamos generar el QR de emparejamiento
 });
 
-// 2. Cuando el DOM esté listo, inicializamos todos los componentes
+// 2. Recibimos la IP LOCAL del PC desde main.js
+window.electronAPI.onSetLocalIp((ip) => {
+    AppState.localIp = ip;
+    console.log(`📍 IP local del PC recibida: ${ip}`);
+    generatePairingQr(); // Intentamos generar el QR de emparejamiento
+});
+
+// 3. Cuando el DOM esté listo, inicializamos los componentes
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
     setupManualConfig();
     document.getElementById('excel-upload').addEventListener('change', handleExcelUpload);
-    // Ahora el formulario llama directamente a la función asíncrona correcta
     document.getElementById('qr-form').addEventListener('submit', handleQrFormSubmit);
 }
 
+// --- LÓGICA DE EMPAREJAMIENTO ---
+function generatePairingQr() {
+    // Solo generamos el QR si ya tenemos tanto la IP como el Puerto
+    if (AppState.localIp && AppState.apiPort) {
+        const pairingUrl = `http://${AppState.localIp}:${AppState.apiPort}/pair.html`;
+        
+        const qrContainer = document.getElementById('pairing-qr-container');
+        const urlDisplay = document.getElementById('pairing-url-display');
 
-// --- LÓGICA DE CONEXIÓN A LA API ---
+        qrContainer.innerHTML = ''; // Limpiar
+        new QRious({
+            element: qrContainer,
+            value: pairingUrl,
+            size: 150,
+        });
 
-function getApiBaseUrl() {
-    return AppState.manualApiBaseUrl || AppState.autoApiBaseUrl || 'http://127.0.0.1:8000';
+        urlDisplay.textContent = `URL de Conexión: ${pairingUrl}`;
+        console.log(`✅ QR de emparejamiento generado para: ${pairingUrl}`);
+    }
 }
+
+// --- LÓGICA DE CONEXIÓN A LA API (Con Fallback Manual) ---
+function getApiBaseUrl() {
+    // Prioridad 1: La URL manual del usuario
+    if (AppState.manualApiBaseUrl) return AppState.manualApiBaseUrl;
+    // Prioridad 2: La URL automática con la IP y puerto recibidos
+    if (AppState.localIp && AppState.apiPort) return `http://${AppState.localIp}:${AppState.apiPort}`;
+    // Fallback por si algo falla
+    return `http://127.0.0.1:8000`;
+}
+
 
 function setupManualConfig() {
     const ipInput = document.getElementById('manual_ip');
@@ -164,15 +203,21 @@ async function sendBulkDataToApi(data) {
 
 async function handleQrFormSubmit(event) {
     event.preventDefault();
-    console.log("✔️ Botón 'Generar QR' presionado, iniciando proceso de guardado y generación.");
-
+    console.log("✔️ Botón 'Generar QR' presionado, iniciando proceso.");
+    
     const form = document.getElementById('qr-form');
     const formData = new FormData(form);
     const dataObject = {};
-    formData.forEach((value, key) => {
-        // Siempre enviar como string, aunque el input sea tipo number
-        dataObject[key] = value !== null && value !== undefined ? String(value) : "";
-    });
+
+    // Limpieza de datos: campos vacíos se envían como null
+    for (const [key, preValue] of formData.entries()) {
+        const value = String(preValue).trim();
+        if (value === '') {
+            dataObject[key] = null;
+        } else {
+            dataObject[key] = value;
+        }
+    }
 
     console.log("📦 Datos del formulario recolectados:", dataObject);
 
@@ -195,18 +240,37 @@ async function handleQrFormSubmit(event) {
         showNotification('✅ Activo guardado en la base de datos con éxito.', 'success');
         console.log("🎉 Activo creado:", nuevoActivo);
 
-        const qrContainer = document.getElementById('qrcode');
-        qrContainer.innerHTML = '';
-        const qrUrl = nuevoActivo.url;
-        
-        if (qrUrl) {
-            console.log(`🖼️ Generando QR para la URL: ${qrUrl}`);
-            new QRious({
-                element: qrContainer,
-                value: qrUrl,
-                size: 250,
-            });
+        // --- LOGS DE DEPURACIÓN ---
+        if (!nuevoActivo || !nuevoActivo.id) {
+            showNotification('⚠️ El backend no devolvió un ID de activo.', 'error');
+            console.error('❌ El backend no devolvió un ID de activo:', nuevoActivo);
         }
+
+        // Construimos la URL PÚBLICA y PERMANENTE para el QR del activo
+        const urlParaElQr = `${ASSET_PAGE_URL}?id=${nuevoActivo.id}`;
+        console.log(`🖼️ Generando QR de Activo para la URL: ${urlParaElQr}`);
+
+        const qrContainer = document.getElementById('qrcode');
+        if (!qrContainer) {
+            showNotification('❌ No se encontró el contenedor #qrcode en el DOM.', 'error');
+            console.error('❌ No se encontró el contenedor #qrcode en el DOM.');
+        } else {
+            qrContainer.innerHTML = '';
+            try {
+                new QRious({
+                    element: qrContainer,
+                    value: urlParaElQr,
+                    size: 250,
+                });
+                showNotification('✅ QR generado correctamente.', 'success');
+                console.log('✅ QR generado correctamente en el contenedor #qrcode');
+            } catch (qrError) {
+                showNotification('❌ Error al generar el QR.', 'error');
+                console.error('❌ Error al generar el QR:', qrError);
+            }
+        }
+
+        form.reset(); // Limpia el formulario
 
     } catch (error) {
         console.error('❌ Error en el proceso de creación de activo y QR:', error);

@@ -1,21 +1,28 @@
+# backend/main.py
+
 import sys
 import os
 import logging
 import argparse # Importamos argparse para leer el puerto desde la línea de comandos
 from contextlib import asynccontextmanager
 
-# --- Configuración de directorio AppData (sin cambios, es perfecto) ---
+# --- LEEMOS LOS ARGUMENTOS PRIMERO ---
+# Esto es clave para que 'args' esté disponible globalmente en este script.
+parser = argparse.ArgumentParser()
+parser.add_argument("--port", type=int, default=8000)
+parser.add_argument("--hostname", type=str, default="localhost")
+args = parser.parse_args()
+
+# --- Configuración (sin cambios) ---
 APP_DATA_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Local", "QRizate")
 os.makedirs(APP_DATA_DIR, exist_ok=True)
-
-# --- Configuración de logging (sin cambios, es perfecto) ---
 LOG_FILE = os.path.join(APP_DATA_DIR, 'qrizate_backend.log')
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(LOG_FILE),
-        logging.StreamHandler(sys.stdout) # Imprime también en la consola de Electron
+        logging.StreamHandler(sys.stdout)
     ]
 )
 
@@ -27,25 +34,18 @@ from models.db import init_db
 from routers.activos import router as activos_router
 import uvicorn
 
-# --- Determinar la ruta para recursos (sin cambios, es perfecto) ---
-if getattr(sys, 'frozen', False):
-    BASE_DIR_RESOURCES = sys._MEIPASS
-else:
-    BASE_DIR_RESOURCES = os.path.dirname(os.path.abspath(__file__))
-
-# --- Configuración de la base de datos (sin cambios, es perfecto) ---
 DATABASE_PATH = os.path.join(APP_DATA_DIR, "QRizate.db")
 
+# --- Lifespan ahora puede "ver" los args y funciona correctamente ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Lógica de inicio
     app.state.hostname = args.hostname # Guardamos el hostname para que los routers lo usen
     app.state.port = args.port         # Guardamos el puerto
     
+    logging.info(f"Configuración guardada: http://{app.state.hostname}:{app.state.port}")
     logging.info(f"Iniciando base de datos en: {DATABASE_PATH}")
     init_db(DATABASE_PATH)
     yield
-    # Lógica de apagado
     logging.info("Cerrando aplicación...")
 
 app = FastAPI(
@@ -55,12 +55,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# --- AJUSTE DE CORS ---
-# Hacemos el CORS un poco más específico para mayor seguridad.
-# "app://." es el origen que usan las aplicaciones de Electron por defecto.
+# --- CORS ---
+# Permitimos todos los orígenes para máxima compatibilidad durante el desarrollo.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["app://."],
+    allow_origins=["*"], # Cambiado a "*" para permitir pruebas desde el celular
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,42 +67,57 @@ app.add_middleware(
 
 app.include_router(activos_router)
 
+# --- Endpoints Generales ---
 @app.get("/health", tags=["Utilities"])
 def health_check():
-    """
-    Endpoint simple para verificar que el servidor está funcionando.
-    """
     return {"status": "ok"}
 
-# --- El HTML de bienvenida y el favicon se mantienen, ¡están geniales! ---
-@app.get("/", response_class=HTMLResponse)
+# --- ¡NUEVO ENDPOINT PARA EMPAREJAMIENTO! ---
+@app.get("/pair.html", response_class=HTMLResponse, include_in_schema=False)
+def get_pairing_page():
+    # Esta es la página que el celular abrirá al escanear el QR de Conexión.
+    # Su única función es guardar la dirección de este servidor en el celular.
+    return """
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Conectando...</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; }
+            .container { max-width: 500px; padding: 40px; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+            h1 { color: #28a745; font-size: 2em; }
+            p { color: #606770; font-size: 1.1em; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>✅ ¡Dispositivo Emparejado!</h1>
+            <p>Se ha guardado la dirección del servidor. Ya puedes cerrar esta ventana y escanear los códigos QR de los activos.</p>
+        </div>
+        <script>
+            try {
+                const serverUrl = new URL(window.location.href).origin;
+                localStorage.setItem('qrizate_server_url', serverUrl);
+            } catch (error) {
+                document.querySelector('.container').innerHTML = '<h1>❌ Error</h1><p>La URL de emparejamiento no es válida.</p>';
+            }
+        </script>
+    </body>
+    </html>
+    """
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def read_root():
-    # ... (tu hermoso HTML aquí, no es necesario cambiarlo) ...
-    return """ Hola este es el servidor de activos """
+    return "<h1>✅ Servidor QRizate funcionando</h1>"
 
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
-    favicon_path = os.path.join(BASE_DIR_RESOURCES, "favicon.ico")
-    if os.path.exists(favicon_path):
-        return FileResponse(favicon_path, media_type="image/x-icon")
-    else:
-        raise HTTPException(status_code=404, detail="Favicon not found")
-
-
-# --- CAMBIO PRINCIPAL: SIMPLIFICACIÓN DEL INICIO ---
-# Ahora el script es un simple servidor que se inicia y espera
-# a que Electron le diga en qué puerto correr.
+# --- Inicio del Servidor Simplificado ---
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    # Leemos ambos argumentos pasados por Electron
-    parser.add_argument("--port", type=int, default=8000)
-    parser.add_argument("--hostname", type=str, default="localhost")
-    args = parser.parse_args()
-
     logging.info(f"Iniciando servidor FastAPI en http://{args.hostname}:{args.port}")
     
     uvicorn.run(
         app,
-        host="0.0.0.0", # Escuchamos en todas las interfaces
+        host="0.0.0.0",
         port=args.port
     )
