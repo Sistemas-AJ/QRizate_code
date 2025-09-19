@@ -1,91 +1,73 @@
 // =======================================================================
-// qr.js - VERSIÓN FINAL Y ORDENADA
+// qr.js - VERSIÓN FINAL CORREGIDA
 // =======================================================================
 
 // --- 1. INICIALIZACIÓN DE VARIABLES GLOBALES ---
-// --- FUNCIONALIDAD DE RESTAURACIÓN DE AUTOGUARDADO ---
+
+// CAMBIO: La función checkForAutoSave está completamente corregida para manejar el foco.
 function checkForAutoSave() {
-  // --- NUEVA LÓGICA DE AUTOGUARDADO/RESTAURACIÓN ---
   const autoSave = localStorage.getItem('editor_autosave');
   console.log('[AutoSave] checkForAutoSave called.');
   if (!autoSave) {
     console.log('[AutoSave] No hay sesión guardada.');
     return;
   }
+
   let parsed;
   try {
     parsed = JSON.parse(autoSave);
-    console.log('[AutoSave] Datos parseados:', parsed);
   } catch (e) {
     console.warn('[AutoSave] Error al parsear sesión guardada:', e);
     localStorage.removeItem('editor_autosave');
     return;
   }
-  // Solo mostrar el diálogo si el canvas está vacío
+
   if (canvas && canvas.getObjects().length === 0) {
-    console.log('[AutoSave] Canvas vacío, posible restauración.');
     if (window.sessionRestored) {
-      console.log('[AutoSave] Sesión ya restaurada, no se repite.');
-      return; // Evita doble restauración
+      return;
     }
     window.sessionRestored = false;
-    if (confirm('¿Deseas restaurar tu sesión anterior?')) {
+
+    const userConfirmed = confirm('¿Deseas restaurar tu sesión anterior?');
+
+    // Se fuerza el foco después del primer diálogo
+    window.focus();
+
+    if (userConfirmed) {
       try {
-        // Restaurar datos del Excel y selectores primero
-        if (parsed.dataRows) {
-          window.dataRows = parsed.dataRows;
-          console.log('[AutoSave] dataRows restaurados:', window.dataRows);
-        } else {
-          console.log('[AutoSave] No dataRows en autosave.');
-        }
-        if (typeof populateColumnSelectors === 'function') {
-          populateColumnSelectors();
-          console.log('[AutoSave] populateColumnSelectors ejecutado.');
-        }
+        if (parsed.dataRows) window.dataRows = parsed.dataRows;
+        if (typeof populateColumnSelectors === 'function') populateColumnSelectors();
         if (parsed.qrColumn) {
           const qrColSelect = document.getElementById('qr-column-select');
-          if (qrColSelect) {
-            qrColSelect.value = parsed.qrColumn;
-            console.log('[AutoSave] qrColumn restaurado:', parsed.qrColumn);
-          }
-        } else {
-          console.log('[AutoSave] No qrColumn en autosave.');
+          if (qrColSelect) qrColSelect.value = parsed.qrColumn;
         }
         if (parsed.filenameColumn) {
           const filenameColSelect = document.getElementById('filename-column-select');
-          if (filenameColSelect) {
-            filenameColSelect.value = parsed.filenameColumn;
-            console.log('[AutoSave] filenameColumn restaurado:', parsed.filenameColumn);
-          }
-        } else {
-          console.log('[AutoSave] No filenameColumn en autosave.');
+          if (filenameColSelect) filenameColSelect.value = parsed.filenameColumn;
         }
-        // Restaurar el canvas y disparar la vista previa
+        
         setTimeout(() => {
           if (parsed.canvas) {
-            console.log('[AutoSave] Restaurando canvas...');
             canvas.loadFromJSON(parsed.canvas, () => {
               canvas.renderAll();
               history = [JSON.stringify(canvas.toJSON())];
               historyIndex = 0;
               savedHistoryIndex = 0;
-              console.log('[AutoSave] Canvas restaurado.');
-              if (typeof generatePreview === 'function') {
-                generatePreview();
-                console.log('[AutoSave] generatePreview ejecutado tras restaurar canvas.');
-              }
+              if (typeof generatePreview === 'function') generatePreview();
               window.sessionRestored = true;
+
               alert('¡Sesión restaurada!');
+              // Se fuerza el foco OTRA VEZ después de la segunda alerta
+              window.focus();
               localStorage.removeItem('editor_autosave');
             });
           } else {
-            console.log('[AutoSave] No canvas en autosave.');
-            if (typeof generatePreview === 'function') {
-              generatePreview();
-              console.log('[AutoSave] generatePreview ejecutado tras restaurar sin canvas.');
-            }
+            if (typeof generatePreview === 'function') generatePreview();
             window.sessionRestored = true;
+            
             alert('¡Sesión restaurada!');
+            // Se fuerza el foco OTRA VEZ después de la segunda alerta
+            window.focus();
             localStorage.removeItem('editor_autosave');
           }
         }, 200);
@@ -94,12 +76,10 @@ function checkForAutoSave() {
       }
     } else {
       localStorage.removeItem('editor_autosave');
-      console.log('[AutoSave] Sesión descartada por el usuario.');
     }
-  } else {
-    console.log('[AutoSave] Canvas no está vacío o ya restaurado.');
   }
 }
+
 const canvas = new fabric.Canvas('canvas', {
   hoverCursor: 'pointer',
   selection: true,
@@ -107,7 +87,6 @@ const canvas = new fabric.Canvas('canvas', {
   selectionLineWidth: 2
 });
 window.canvas = canvas;
-// Aumenta el área de sensibilidad de los controles
 fabric.Object.prototype.padding = 8;
 fabric.Object.prototype.cornerSize = 14;
 fabric.Object.prototype.hoverCursor = 'pointer';
@@ -126,7 +105,6 @@ function addText() {
   const text = new fabric.Textbox('Ingrese texto...', {
     left: 100, top: 100, fontSize: 20, fill: '#000000',
     textAlign: 'left', fontFamily: 'Arial', width: 300
-
   });
   canvas.add(text);
 }
@@ -302,12 +280,9 @@ async function generateCertificates() {
   const qrColumn = document.getElementById('qr-column-select').value;
   const filenameColumn = document.getElementById('filename-column-select').value;
 
-  // 1. Mostramos la barra de progreso inmediatamente.
   showProgress("qr", total);
 
-  // 2. Usamos setTimeout para darle al navegador un instante para renderizar la barra.
   setTimeout(async () => {
-    // --- FASE 1: Preparar todos los lienzos (Canvas) con sus datos y QR ---
     const canvasProcessingPromises = dataRows.map((row, index) => {
       return new Promise(resolveCanvas => {
         const clonedCanvas = new fabric.Canvas(null, { width: canvas.width, height: canvas.height });
@@ -328,7 +303,6 @@ async function generateCertificates() {
 
     const processedCertificates = await Promise.all(canvasProcessingPromises);
 
-    // --- FASE 2: Convertir cada lienzo preparado a PDF ---
     showProgress("pdf", total);
 
     const pdfCreationPromises = processedCertificates.map((cert, index) => {
@@ -343,12 +317,11 @@ async function generateCertificates() {
 
     await Promise.all(pdfCreationPromises);
 
-    // --- FINALIZACIÓN ---
     hideProgress();
     downloadAll();
     alert("¡Certificados generados y listos para descargar!");
 
-  }, 50); // Una pequeña pausa de 50 milisegundos es suficiente.
+  }, 50);
 }
 
 function processQrForCanvas(canvasInstance, rowData, qrColumn) {
@@ -401,22 +374,14 @@ function generateUniqueFileName(row, index, selectedColumn) {
 function exportToPDF(canvasInstance, fileName, callback) {
   try {
     const svgString = canvasInstance.toSVG();
-
-    // --- LA SOLUCIÓN ESTÁ AQUÍ ---
-    // 1. Crear un intérprete (parser)
     const parser = new DOMParser();
-    // 2. Interpretar el texto SVG para crear un documento SVG
     const svgDoc = parser.parseFromString(svgString, "image/svg+xml");
-    // 3. Obtener el elemento raíz <svg> del documento
     const svgElement = svgDoc.documentElement;
-
     const pdf = new window.jspdf.jsPDF({ 
         orientation: 'landscape', 
         unit: 'px', 
         format: [canvasInstance.width, canvasInstance.height] 
     });
-
-    // 4. Pasamos el ELEMENTO SVG, no el texto
     pdf.svg(svgElement).then(() => {
       zip.file(`${fileName}.pdf`, pdf.output('blob'));
       callback(true);
@@ -428,8 +393,6 @@ function exportToPDF(canvasInstance, fileName, callback) {
 }
 
 function exportSinglePDF() {
-
-
   try {
     const svgString = canvas.toSVG();
     const parser = new DOMParser();
@@ -444,12 +407,10 @@ function exportSinglePDF() {
 
     pdf.svg(svgElement).then(() => {
       pdf.save('Certificado_Unico.pdf');
-
     }).catch((error) => {
       console.error("Error al renderizar el SVG en el PDF:", error);
       alert("Hubo un error al generar el PDF. Revisa la consola para más detalles.");
     });
-
   } catch (error) {
     console.error("Error general al exportar PDF único:", error);
     alert("Hubo un error al generar el PDF. Revisa la consola para más detalles.");
@@ -471,34 +432,6 @@ function downloadAll() {
 }
 
 // --- 6. FUNCIONES DE UI Y LÓGICA DE LA BARRA DE HERRAMIENTAS ---
-
-function showProgress(phase, total) {
-  const container = document.getElementById("progress-container");
-  if (!container) {
-    console.error("¡ERROR! No se encuentra el elemento #progress-container en el HTML.");
-    return;
-  }
-  
-  container.style.display = "block";
-  const label = document.getElementById("progress-label");
-
-  if (phase === "qr") {
-    label.innerText = "Fase 1 de 2: Preparando lienzos y QR...";
-  } else if (phase === "pdf") {
-    label.innerText = "Fase 2 de 2: Creando archivos PDF...";
-  }
-  updateProgress(0, total);
-}
-
-function updateProgress(current, total) {
-  const percent = total > 0 ? Math.floor((current / total) * 100) : 0;
-  document.getElementById("progress-bar").value = percent;
-  document.getElementById("progress-percent").innerText = `${percent}%`;
-}
-
-function hideProgress() {
-  document.getElementById("progress-container").style.display = "none";
-}
 
 function generatePreview() {
   if (window.previewFabricCanvas) {
@@ -528,9 +461,7 @@ function generatePreview() {
                       previewCanvas.add(qrImg);
                       resolve();
                     });
-                  } else {
-                    resolve();
-                  }
+                  } else { resolve(); }
                 });
               } else {
                 previewCanvas.remove(obj);
@@ -539,7 +470,6 @@ function generatePreview() {
             });
             promises.push(qrPromise);
           } else {
-            // Se llama a la función de reemplazo de texto para las demás etiquetas
             replaceTextWithStyles(obj, row);
           }
         }
@@ -554,10 +484,6 @@ function generatePreview() {
 
 const debouncedGeneratePreview = debounce(generatePreview, 300);
 
-/**
- * Actualiza los valores de la barra de herramientas para que coincidan con el objeto seleccionado.
- * NO añade listeners de eventos.
- */
 function updateFloatingToolbar() {
   const activeObject = canvas.getActiveObject();
   const toolbar = document.getElementById("floating-toolbar");
@@ -586,23 +512,19 @@ function changeCase(targetCase) {
     const activeObject = canvas.getActiveObject();
     if (!activeObject || !['textbox', 'i-text', 'text'].includes(activeObject.type)) return;
 
-    // Si hay texto seleccionado, se aplica el cambio solo a la selección
     if (activeObject.isEditing && activeObject.selectionStart !== activeObject.selectionEnd) {
         const start = activeObject.selectionStart;
         const end = activeObject.selectionEnd;
         const selectedText = activeObject.getSelectedText();
-        const newSelectedText = (targetCase === 'upper') ? selectedText.toUpperCase() : selectedText.toLowerCase();
+        const newSelectedText = (targetCase === 'upper') ? selectedText.toUpperCase() : selected.toLowerCase();
         
-        // Reemplazamos el texto seleccionado de forma manual y segura
         const originalText = activeObject.text;
         const newFullText = originalText.slice(0, start) + newSelectedText + originalText.slice(end);
         activeObject.set('text', newFullText);
 
-        // Mantenemos la selección sobre el texto modificado
         activeObject.selectionStart = start;
         activeObject.selectionEnd = end;
-
-    } else { // Si no, se aplica a todo el objeto
+    } else {
         const newText = (targetCase === 'upper') ? activeObject.text.toUpperCase() : activeObject.text.toLowerCase();
         activeObject.set('text', newText);
     }
@@ -611,54 +533,38 @@ function changeCase(targetCase) {
 
 function dragElement(elmnt) {
   let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-  // El área de arrastre será el encabezado o, si no existe, el propio elemento.
   const header = document.getElementById(elmnt.id + "-header") || elmnt;
   
   header.onmousedown = dragMouseDown;
 
   function dragMouseDown(e) {
-    // Si el clic se hizo sobre un control interactivo, no iniciar el arrastre.
     const target = e.target;
     if (['SELECT', 'INPUT', 'BUTTON', 'OPTION', 'LABEL', 'I'].includes(target.tagName)) {
         return;
     }
-    
     e.preventDefault();
-    
-    // Posición inicial del cursor
     pos3 = e.clientX;
     pos4 = e.clientY;
-    
-    // Asignamos los eventos de movimiento y soltado al documento entero
     document.onmouseup = closeDragElement;
     document.onmousemove = elementDrag;
   }
 
   function elementDrag(e) {
     e.preventDefault();
-    
-    // Calculamos el desplazamiento del cursor
     pos1 = pos3 - e.clientX;
     pos2 = pos4 - e.clientY;
     pos3 = e.clientX;
     pos4 = e.clientY;
-    
-    // Aplicamos la nueva posición al elemento
     elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
     elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
   }
 
   function closeDragElement() {
-    // Limpiamos los eventos cuando se suelta el clic
     document.onmouseup = null;
     document.onmousemove = null;
   }
 }
 
-/**
- * Función de reemplazo de texto mejorada.
- * Encuentra todos los placeholders en un objeto de texto y los reemplaza con los datos de la fila.
- */
 function replaceTextWithStyles(obj, rowData) {
   let text = obj.text;
   if (!text) return;
@@ -675,11 +581,6 @@ function replaceTextWithStyles(obj, rowData) {
   obj.set('text', text);
 }
 
-
-function openTemplateModal() { document.getElementById('template-modal').style.display = 'flex'; }
-function closeTemplateModal() { document.getElementById('template-modal').style.display = 'none'; }
-function showProgress(phase) { /* ... */ }
-function hideProgress() { /* ... */ }
 function debounce(func, delay) {
   let timeout;
   return (...args) => {
@@ -691,18 +592,14 @@ function debounce(func, delay) {
 // --- 7. INICIALIZACIÓN Y LISTENERS DE EVENTOS ---
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Inicialización de la app
   inicializarAtajos(canvas, { undo, redo, deleteSelected, saveTemplate, saveState, debouncedGeneratePreview });
   history = [JSON.stringify(canvas.toJSON())];
   historyIndex = 0;
   savedHistoryIndex = 0;
   dragElement(document.getElementById("floating-toolbar"));
-  closeTemplateModal();
 
-  // === Llamada a la restauración de autosave ===
   checkForAutoSave();
 
-  // Listeners para input-image, columns-menu, toolbar, etc.
   document.getElementById('input-image').addEventListener('change', function (event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -722,48 +619,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeObject = canvas.getActiveObject();
 
     if (activeObject && activeObject.isEditing) {
-      // --- LÓGICA FINAL Y ROBUSTA PARA INSERTAR ---
-
       const start = activeObject.selectionStart;
       const end = activeObject.selectionEnd;
       const originalText = activeObject.text;
-
-      // 1. Construimos el nuevo texto manualmente
       const newText = originalText.slice(0, start) + placeholder + originalText.slice(end);
       activeObject.set('text', newText);
-
-      // 2. Salimos del modo de edición para "confirmar" el cambio en el objeto
       activeObject.exitEditing();
-
-      // 3. Forzamos el guardado en nuestro historial y actualizamos la vista previa
       saveState();
       debouncedGeneratePreview();
-
-      // 4. Volvemos a seleccionar y a entrar en modo edición para que el usuario pueda seguir escribiendo
       canvas.setActiveObject(activeObject);
       activeObject.enterEditing();
-
-      // 5. Movemos el cursor al final del texto insertado
       const newCursorPos = start + placeholder.length;
       activeObject.setSelectionRange(newCursorPos, newCursorPos);
-
-      // 6. Finalmente, renderizamos el lienzo
       canvas.renderAll();
-
     } else {
-      // Si no hay nada seleccionado, crea un nuevo cuadro de texto.
       const newText = new fabric.Textbox(placeholder, {
         left: 100, top: 100, fontSize: 25, fontFamily: 'Arial'
       });
       canvas.add(newText);
       canvas.setActiveObject(newText);
     }
-
-    // Limpiamos el valor del menú desplegable.
     this.value = "";
   });
 
-  // Listeners para la barra de herramientas de texto
   const toolbarControls = {
     "text-align": "textAlign", "font-family": "fontFamily",
     "text-color": "fill", "font-size": "fontSize"
@@ -785,7 +663,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Listeners para checkboxes y botones de la barra de herramientas
 document.getElementById("text-bold").addEventListener("change", (e) => {
   const activeObject = canvas.getActiveObject();
   if (!activeObject) return;
@@ -812,14 +689,46 @@ document.getElementById("text-italic").addEventListener("change", (e) => {
   document.getElementById("text-lowercase").addEventListener("click", () => changeCase('lower'));
   document.getElementById("bring-to-front").addEventListener("click", () => canvas.getActiveObject()?.bringToFront());
   document.getElementById("send-to-back").addEventListener("click", () => canvas.getActiveObject()?.sendToBack());
-});
 
-// Listener consolidado para los eventos del lienzo
-canvas.on({
-  'object:added': () => { saveState(); debouncedGeneratePreview(); },
-  'object:removed': () => { saveState(); debouncedGeneratePreview(); },
-  'object:modified': () => { saveState(); debouncedGeneratePreview(); },
-  'selection:created': updateFloatingToolbar,
-  'selection:updated': updateFloatingToolbar,
-  'selection:cleared': () => { document.getElementById("floating-toolbar").style.display = "none"; }
+  // Listener consolidado para los eventos del lienzo
+  canvas.on({
+    'object:added': () => { saveState(); debouncedGeneratePreview(); },
+    'object:removed': () => { saveState(); debouncedGeneratePreview(); },
+    'object:modified': () => { saveState(); debouncedGeneratePreview(); },
+    'selection:created': updateFloatingToolbar,
+    'selection:updated': updateFloatingToolbar,
+    'selection:cleared': () => { document.getElementById("floating-toolbar").style.display = "none"; },
+    // CAMBIO: Se mueve el código de devtools-flash a un evento más lógico.
+    'text:editing:entered': (e) => {
+        if (window.require && window.require('electron')) {
+            try {
+                const { ipcRenderer } = window.require('electron');
+                ipcRenderer.send('devtools-flash');
+            } catch (err) {
+                console.warn('No se pudo enviar devtools-flash:', err);
+            }
+        }
+    }
+  });
+
+  // CAMBIO: Se añade el plan B de "foco agresivo" para garantizar que funcione.
+  console.log('Iniciando intento agresivo de foco...');
+  let focusAttempts = 0;
+  const canvasElement = document.querySelector('#canvas-container canvas');
+  const focusInterval = setInterval(() => {
+      console.log(`Intento de foco #${focusAttempts + 1}`);
+      window.focus(); // 1. Enfocar la ventana
+      if (canvasElement) {
+        canvasElement.focus(); // 2. Enfocar el canvas directamente
+      }
+      
+      focusAttempts++;
+      if (focusAttempts >= 12 || document.hasFocus()) { 
+          if (document.hasFocus()) {
+              console.log('Éxito: La ventana ahora tiene el foco.');
+          }
+          console.log('Finalizando intento de foco agresivo.');
+          clearInterval(focusInterval);
+      }
+  }, 250);
 });

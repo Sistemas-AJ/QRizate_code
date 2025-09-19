@@ -1,4 +1,3 @@
-
 require('electron-reload')(__dirname, {
   electron: require('path').join(__dirname, 'node_modules', '.bin', 'electron.cmd'),
   ignored: /node_modules|[\/\\]\./
@@ -42,15 +41,17 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      webSecurity: false // Permitir peticiones al backend local
+      webSecurity: false
     }
   });
   
   mainWindow.loadFile('src/index.html');
+
   // =================================================================
-  // LA LÍNEA CLAVE QUE RESUELVE EL PROBLEMA DE FOCO
+  // CAMBIO: Se asegura de forzar el foco en CADA navegación.
   // =================================================================
-  mainWindow.webContents.on('did-finish-load', () => {
+  mainWindow.webContents.on('did-navigate', () => {
+    console.log('>>> EVENTO: did-navigate - Forzando foco...');
     mainWindow.webContents.focus();
   });
   // =================================================================
