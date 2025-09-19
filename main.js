@@ -1,8 +1,15 @@
+require('electron-reload')(__dirname, {
+  electron: require('path').join(__dirname, 'node_modules', '.bin', 'electron.cmd'),
+  ignored: /node_modules|[\/\\]\./
+});
+
+
 const { app, BrowserWindow, Menu, Tray } = require('electron/main');
 const path = require('node:path');
 const os = require('node:os'); // <--- 1. Importamos 'os' para obtener la IP
 const { spawn } = require('child_process');
 const portfinder = require('portfinder');
+let backendPort = null;
 
 // --- ELIMINADO ---
 // Ya no necesitamos la librería 'bonjour'
@@ -31,8 +38,9 @@ function getLocalIp() {
 async function startBackend() {
   try {
     const port = await portfinder.getPortPromise({ port: 8000 });
+    backendPort = port;
     console.log(`Puerto libre encontrado para el backend: ${port}`);
-    
+    const PUBLIC_URL_BASE = 'https://qrizate.systempiura.com/asset.html';
     // --- SIMPLIFICADO ---
     // Ya no necesitamos ni definimos un 'hostname' mDNS.
     const scriptPath = app.isPackaged
@@ -41,7 +49,7 @@ async function startBackend() {
 
     // --- SIMPLIFICADO ---
     // Iniciamos el proceso de Python pasándole solo el puerto.
-    backendProcess = spawn('python', [scriptPath, '--port', port]);
+    backendProcess = spawn('python', [scriptPath, '--port', port, '--public-url', PUBLIC_URL_BASE]);
 
     backendProcess.stdout.on('data', (data) => {
       console.log(`Backend stdout: ${data}`);
@@ -80,9 +88,10 @@ function createWindow() {
   // Cuando la ventana haya terminado de cargar, le enviamos la IP local
   // para que pueda generar el QR de emparejamiento.
   mainWindow.webContents.on('did-finish-load', () => {
-      const localIp = getLocalIp();
-      mainWindow.webContents.send('set-local-ip', localIp);
-  });
+    const localIp = getLocalIp();
+    mainWindow.webContents.send('set-local-ip', localIp);
+    mainWindow.webContents.send('set-api-port', backendPort); // <-- Asegúrate de enviar el puerto también
+});
   
   if (!app.isPackaged) {
     mainWindow.webContents.openDevTools();

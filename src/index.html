@@ -184,6 +184,35 @@
 
         <div id="qrcode"></div>
       </div>
+      <div
+        id="custom-confirm-modal"
+        style="
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, 0.3);
+          z-index: 9999;
+          align-items: center;
+          justify-content: center;
+        "
+      >
+        <div
+          style="
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            margin: auto;
+          "
+        >
+          <p id="custom-confirm-message"></p>
+          <button id="custom-confirm-yes">Sí, actualizar</button>
+          <button id="custom-confirm-no">No</button>
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>

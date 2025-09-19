@@ -103,46 +103,34 @@ def generar_qr_base64(texto: str):
 
 @router.post("/", response_model=ActivoResponse, status_code=201)
 def crear_activo(activo: ActivoCreate, request: Request, db: Session = Depends(get_db)):
-    # Generar id si no viene
     data = activo.model_dump()
+    correlativo = data.get('correlativo', '')
+    area = data.get('area', '')
+    sede = data.get('sede', '')
+    # Generar id si no viene
     if not data.get('id'):
-        correlativo = data.get('correlativo', '')
-        central = data.get('central_de_costos', '')
-        area = data.get('area', '')
-        data['id'] = f"{correlativo}{central}{area}"
-    if db.query(Activo).filter(Activo.id == data['id']).first():
-        raise HTTPException(status_code=400, detail="Ya existe un activo con este ID")
-    
-    # Validar que el correlativo sea único en toda la base de datos
-    if data.get('correlativo') and db.query(Activo).filter(Activo.correlativo == data.get('correlativo')).first():
-        raise HTTPException(status_code=400, detail="Ya existe un activo con este correlativo")
-        
-    # Validar que no exista otro activo con el mismo correlativo, central_de_costos y area
-    if db.query(Activo).filter(
-        Activo.correlativo == data.get('correlativo'),
-        Activo.central_de_costos == data.get('central_de_costos'),
-        Activo.area == data.get('area')
-    ).first():
-        raise HTTPException(status_code=400, detail="Ya existe un activo con el mismo correlativo, central_de_costos y área")
-    # Generar codigo_activo si no viene
+        data['id'] = f"{correlativo}{area}{sede}"
     if not data.get('codigo_activo'):
-        data['codigo_activo'] = f"{correlativo}-{central}-{area}"
-    # Generar url si no viene
+        data['codigo_activo'] = f"{correlativo}-{area}-{sede}"
     if not data.get('url'):
-        # 'request.app.state.hostname' y 'request.app.state.port' los definiremos en main.py
-        hostname = request.app.state.hostname
-        port = request.app.state.port
-        # Usamos el hostname dinámico en lugar de la IP
-        data['url'] = f"http://{hostname}:{port}/activos/detalle/{data['id']}"
+        public_url_base = request.app.state.public_url_base
+        data['url'] = f"{public_url_base}?id={data['id']}"
+    # Verificar si ya existe un activo con el mismo correlativo
+    db_activo = db.query(Activo).filter(Activo.correlativo == correlativo).first()
+    if db_activo:
+        # Devuelve advertencia, no actualiza
+        raise HTTPException(
+            status_code=409,
+            detail="Ya existe un activo con este correlativo. ¿Desea actualizar los datos?"
+        )
+    
+    
+    # Crear nuevo activo
     db_activo = Activo(**data)
     db.add(db_activo)
-    try:
-        db.commit()
-        db.refresh(db_activo)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=f"Error al crear el activo: {e}")
-    return db_activo
+    db.commit()
+    db.refresh(db_activo)
+    return ActivoResponse.model_validate(db_activo)
 
 @router.get("/", response_model=List[ActivoResponse])
 def obtener_todos_los_activos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -236,72 +224,42 @@ def detalle_activo_html(codigo: str, request: Request):
     </html>
     """
 
-@router.post("/bulk-create", status_code=201)
+@router.post("/bulk-create", response_model=List[ActivoResponse], status_code=201)
 def crear_o_actualizar_activos_en_lote(activos: List[ActivoCreate], request: Request, db: Session = Depends(get_db)):
-    creados = 0
-    actualizados = 0
+    creados = []
+    actualizados = []
     errores = []
-    hostname = request.app.state.hostname
-    port = request.app.state.port
-
-    required_fields = ['correlativo', 'central_de_costos', 'area']
     for activo_data in activos:
         data = activo_data.model_dump()
-        # Limpiar: solo dejar campos válidos
-        data = {k: v for k, v in data.items() if k in ActivoBase.model_fields}
-        # Validar campos mínimos para generar id
+        # Generar id SOLO con correlativo, área y sede
         if not data.get('id'):
-            missing = [f for f in required_fields if not data.get(f)]
-            if missing:
-                errores.append(f"Faltan campos requeridos para generar id: {', '.join(missing)}")
-                continue
             correlativo = data.get('correlativo', '')
-            central = data.get('central_de_costos', '')
             area = data.get('area', '')
-            data['id'] = f"{correlativo}{central}{area}"
-        # Generar codigo_activo si no viene
+            sede = data.get('sede', '')
+            data['id'] = f"{correlativo}{area}{sede}"
         if not data.get('codigo_activo'):
-            data['codigo_activo'] = f"{correlativo}-{central}-{area}"
-            
-        # Validar que el correlativo sea único
-        if data.get('correlativo'):
-            correlativo_existente = db.query(Activo).filter(Activo.correlativo == data.get('correlativo')).first()
-            if correlativo_existente and correlativo_existente.id != data['id']:
-                errores.append(f"Ya existe un activo con el correlativo: {data.get('correlativo')}")
-                continue
-                
-        db_activo = db.query(Activo).filter(Activo.id == data['id']).first()
-        # Validar que no exista otro activo con el mismo correlativo, central_de_costos y area (si es nuevo)
-        if not db_activo and db.query(Activo).filter(
-            Activo.correlativo == data.get('correlativo'),
-            Activo.central_de_costos == data.get('central_de_costos'),
-            Activo.area == data.get('area')
-        ).first():
-            errores.append(f"Ya existe un activo con correlativo={data.get('correlativo')}, central_de_costos={data.get('central_de_costos')}, area={data.get('area')}")
-            continue
-        # Generar url si no viene
+            correlativo = data.get('correlativo', '')
+            area = data.get('area', '')
+            sede = data.get('sede', '')
+            data['codigo_activo'] = f"{correlativo}-{area}-{sede}"
         if not data.get('url'):
-             # Usamos las variables que obtuvimos al inicio
-            data['url'] = f"http://{hostname}:{port}/activos/detalle/{data['id']}"
-            db_activo = db.query(Activo).filter(Activo.id == data.get('id')).first()
+            public_url_base = request.app.state.public_url_base
+            data['url'] = f"{public_url_base}?id={data['id']}"
+        db_activo = db.query(Activo).filter(Activo.id == data['id']).first()
         if db_activo:
             for key, value in data.items():
                 setattr(db_activo, key, value)
-            actualizados += 1
+            actualizados.append(db_activo)
         else:
             db_activo = Activo(**data)
             db.add(db_activo)
-            creados += 1
+            creados.append(db_activo)
     try:
         db.commit()
     except Exception as e:
         db.rollback()
         errores.append(str(e))
-    return {
-        "creados": creados,
-        "actualizados": actualizados,
-        "errores": errores
-    }
+    return [ActivoResponse.model_validate(a) for a in creados + actualizados]
 
 @router.get("/stats/", response_model=StatsResponse)
 def obtener_estadisticas(db: Session = Depends(get_db)):

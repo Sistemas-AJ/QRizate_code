@@ -1,19 +1,12 @@
 // Define aquí la URL pública y fija a la que apuntarán los QR de tus activos.
-const ASSET_PAGE_URL = 'https://qrizate.systempiura.com/asset.html';
+const ASSET_PAGE_URL = 'https://qrizate.systempiura.com/asset.html&id=23784344';
 
 // Estado centralizado de la aplicación
 const AppState = {
     localIp: null, // La IP del PC en la red local
     apiPort: null, // El puerto en el que corre el backend
-    manualApiBaseUrl: null, // La URL manual que el usuario escribe
+    apiBaseUrl: null, // La URL completa y correcta del backend local
 };
-
-const qrContainer = document.getElementById('qrcode');
-qrContainer.innerHTML = '';
-const canvas = document.createElement('canvas');
-canvas.width = 250;
-canvas.height = 250;
-qrContainer.appendChild(canvas);
 
 // --- INICIALIZACIÓN Y CONEXIÓN CON ELECTRON ---
 
@@ -21,23 +14,168 @@ qrContainer.appendChild(canvas);
 window.electronAPI.onSetApiPort((port) => {
     AppState.apiPort = port;
     console.log(`🔌 Puerto del API recibido: ${port}`);
-    generatePairingQr(); // Intentamos generar el QR de emparejamiento
+    updateApiBaseUrl();
+    updateConnectionStatus(); // <-- Añade esta línea
 });
 
 // 2. Recibimos la IP LOCAL del PC desde main.js
 window.electronAPI.onSetLocalIp((ip) => {
     AppState.localIp = ip;
     console.log(`📍 IP local del PC recibida: ${ip}`);
-    generatePairingQr(); // Intentamos generar el QR de emparejamiento
+    updateApiBaseUrl();
+    updateConnectionStatus(); // <-- Añade esta línea
 });
 
-// 3. Cuando el DOM esté listo, inicializamos los componentes
-document.addEventListener('DOMContentLoaded', init);
+// 3. Función central para construir la URL del backend
+function updateApiBaseUrl() {
+    // Solo construimos la URL si tenemos tanto la IP como el puerto
+    if (AppState.localIp && AppState.apiPort) {
+        AppState.apiBaseUrl = `http://${AppState.localIp}:${AppState.apiPort}`;
+        console.log(`✅ URL del backend establecida en: ${AppState.apiBaseUrl}`);
+        // Actualizamos el texto informativo en la UI
+        document.getElementById('ip-port-actual').textContent = `Conectado a: ${AppState.apiBaseUrl}`;
+    }
+}
+
+
 
 function init() {
-    setupManualConfig();
-    document.getElementById('excel-upload').addEventListener('change', handleExcelUpload);
-    document.getElementById('qr-form').addEventListener('submit', handleQrFormSubmit);
+    // Listeners para carga de Excel y formulario QR
+    const excelUpload = document.getElementById('excel-upload');
+    if (excelUpload) {
+        excelUpload.removeEventListener('change', handleExcelUpload); // Evita duplicados
+        excelUpload.addEventListener('change', handleExcelUpload);
+    }
+    const qrForm = document.getElementById('qr-form');
+    if (qrForm) {
+        qrForm.removeEventListener('submit', handleQrFormSubmit); // Evita duplicados
+        qrForm.addEventListener('submit', handleQrFormSubmit);
+    }
+    console.log("✅ Aplicación inicializada.");
+}
+
+
+// 4. Cuando el DOM esté listo, inicializamos los listeners
+document.addEventListener('DOMContentLoaded', init);
+
+
+async function handleQrFormSubmit(event) {
+    event.preventDefault();
+
+    if (!AppState.apiBaseUrl) {
+        showNotification("Error: Aún no se ha establecido la conexión con el servidor.", "error");
+        return;
+    }
+
+    const qrcodecontainer = document.getElementById('qrcode');
+    qrcodecontainer.innerHTML = '';
+
+    const form = document.getElementById('qr-form');
+    const formData = new FormData(form);
+    const dataObject = {};
+    formData.forEach((value, key) => {
+        dataObject[key] = String(value).trim() || null;
+    });
+
+    try {
+        const apiUrl = `${AppState.apiBaseUrl}/activos/`;
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataObject)
+        });
+
+        if (response.status === 409) {
+            // Advertencia: correlativo ya existe
+            const errorData = await response.json();
+            const userConfirmed = await customConfirm(`${errorData.detail}\n¿Desea actualizar los datos de este activo?`);
+            if (userConfirmed) {
+                // Si el usuario acepta, actualiza el activo
+                const correlativo = dataObject.correlativo;
+                // Busca el activo por correlativo para obtener el id
+                const getActivoUrl = `${AppState.apiBaseUrl}/activos/?skip=0&limit=1000`;
+                const activosResp = await fetch(getActivoUrl);
+                const activos = await activosResp.json();
+                const existente = activos.find(a => a.correlativo === correlativo);
+                if (existente) {
+                    const putUrl = `${AppState.apiBaseUrl}/activos/${existente.id}`;
+                    const putResp = await fetch(putUrl, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataObject)
+                    });
+                    if (!putResp.ok) {
+                        const putError = await putResp.text();
+                        throw new Error(`Error al actualizar: ${putError}`);
+                    }
+                    const actualizado = await putResp.json();
+                    showNotification('✅ Activo actualizado con éxito.', 'success');
+                    renderQr(actualizado.url, qrcodecontainer, actualizado.id);
+                    form.reset();
+                    return;
+                } else {
+                    throw new Error('No se encontró el activo existente para actualizar.');
+                }
+            } else {
+                showNotification('Operación cancelada por el usuario.', 'error');
+                return; // <-- Aquí debes colocar el return
+            }
+        }
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Error del servidor: ${response.status} - ${errorText}`);
+        }
+
+        const nuevoActivo = await response.json();
+        showNotification('✅ Activo guardado con éxito.', 'success');
+        renderQr(nuevoActivo.url, qrcodecontainer, nuevoActivo.id);
+        form.reset();
+
+    } catch (error) {
+        console.error('❌ Error en el proceso de creación:', error);
+        showNotification(`Error: ${error.message}`, 'error');
+    }
+}
+
+function customConfirm(message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-confirm-modal');
+        const msg = document.getElementById('custom-confirm-message');
+        const yesBtn = document.getElementById('custom-confirm-yes');
+        const noBtn = document.getElementById('custom-confirm-no');
+        msg.textContent = message;
+        modal.style.display = 'flex';
+
+        yesBtn.onclick = () => {
+            modal.style.display = 'none';
+            resolve(true);
+        };
+        noBtn.onclick = () => {
+            modal.style.display = 'none';
+            resolve(false);
+        };
+    });
+}
+
+function renderQr(urlParaElQr, container, codigo) {
+    container.innerHTML = '';
+    const canvas = document.createElement('canvas');
+    container.appendChild(canvas);
+
+    // El QR contiene la URL completa
+    new QRious({
+        element: canvas,
+        value: urlParaElQr,
+        size: 250,
+    });
+
+    // Debajo del QR, muestra solo el código
+    const codeDiv = document.createElement('div');
+    codeDiv.style.marginTop = '10px';
+    codeDiv.style.wordBreak = 'break-all';
+    codeDiv.textContent = `Código: ${codigo}`;
+    container.appendChild(codeDiv);
 }
 
 // --- LÓGICA DE EMPAREJAMIENTO ---
@@ -178,7 +316,11 @@ async function sendBulkDataToApi(data) {
         return newRow;
     });
 
-    const apiUrl = `${getApiBaseUrl()}/activos/bulk-create`;
+    if (!AppState.apiBaseUrl) {
+        showNotification("Error: No hay conexión con el servidor para la carga masiva.", "error");
+        return;
+    }
+    const apiUrl = `${AppState.apiBaseUrl}/activos/bulk-create`;
     try {
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -192,6 +334,34 @@ async function sendBulkDataToApi(data) {
         const result = await response.json();
         console.log('Respuesta de bulk-create:', result);
         showNotification('Datos del Excel cargados correctamente.', 'success');
+
+        // Mostrar las URLs recibidas del backend
+        if (Array.isArray(result)) {
+            const bulkQrContainer = document.getElementById('bulk-qr-container');
+            bulkQrContainer.innerHTML = '';
+            result.forEach((item, idx) => {
+                if (item.url) {
+                    const qrDiv = document.createElement('div');
+                    qrDiv.style.marginBottom = '20px';
+
+                    const canvas = document.createElement('canvas');
+                    new QRious({
+                        element: canvas,
+                        value: item.url,
+                        size: 150,
+                    });
+                    qrDiv.appendChild(canvas);
+
+                    const urlDiv = document.createElement('div');
+                    urlDiv.style.wordBreak = 'break-all';
+                    urlDiv.textContent = `URL: ${item.url}`;
+                    qrDiv.appendChild(urlDiv);
+
+                    bulkQrContainer.appendChild(qrDiv);
+                }
+            });
+        }
+
     } catch (error) {
         console.error('Error enviando datos a la API:', error);
         showNotification(`Error al cargar datos: ${error.message}`, 'error');
@@ -200,83 +370,6 @@ async function sendBulkDataToApi(data) {
 
 
 // --- LÓGICA DE GENERACIÓN DE QR (VERSIÓN ÚNICA Y CORRECTA) ---
-
-async function handleQrFormSubmit(event) {
-    event.preventDefault();
-    console.log("✔️ Botón 'Generar QR' presionado, iniciando proceso.");
-    
-    const form = document.getElementById('qr-form');
-    const formData = new FormData(form);
-    const dataObject = {};
-
-    // Limpieza de datos: campos vacíos se envían como null
-    for (const [key, preValue] of formData.entries()) {
-        const value = String(preValue).trim();
-        if (value === '') {
-            dataObject[key] = null;
-        } else {
-            dataObject[key] = value;
-        }
-    }
-
-    console.log("📦 Datos del formulario recolectados:", dataObject);
-
-    try {
-        const apiUrl = `${getApiBaseUrl()}/activos/`;
-        console.log(`📡 Enviando datos a: ${apiUrl}`);
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dataObject)
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Error del servidor: ${response.status} - ${errorText}`);
-        }
-
-        const nuevoActivo = await response.json();
-        showNotification('✅ Activo guardado en la base de datos con éxito.', 'success');
-        console.log("🎉 Activo creado:", nuevoActivo);
-
-        // --- LOGS DE DEPURACIÓN ---
-        if (!nuevoActivo || !nuevoActivo.id) {
-            showNotification('⚠️ El backend no devolvió un ID de activo.', 'error');
-            console.error('❌ El backend no devolvió un ID de activo:', nuevoActivo);
-        }
-
-        // Construimos la URL PÚBLICA y PERMANENTE para el QR del activo
-        const urlParaElQr = `${ASSET_PAGE_URL}?id=${nuevoActivo.id}`;
-        console.log(`🖼️ Generando QR de Activo para la URL: ${urlParaElQr}`);
-
-        const qrContainer = document.getElementById('qrcode');
-        if (!qrContainer) {
-            showNotification('❌ No se encontró el contenedor #qrcode en el DOM.', 'error');
-            console.error('❌ No se encontró el contenedor #qrcode en el DOM.');
-        } else {
-            qrContainer.innerHTML = '';
-            try {
-                new QRious({
-                    element: qrContainer,
-                    value: urlParaElQr,
-                    size: 250,
-                });
-                showNotification('✅ QR generado correctamente.', 'success');
-                console.log('✅ QR generado correctamente en el contenedor #qrcode');
-            } catch (qrError) {
-                showNotification('❌ Error al generar el QR.', 'error');
-                console.error('❌ Error al generar el QR:', qrError);
-            }
-        }
-
-        form.reset(); // Limpia el formulario
-
-    } catch (error) {
-        console.error('❌ Error en el proceso de creación de activo y QR:', error);
-        showNotification(`Error: ${error.message}`, 'error');
-    }
-}
 
 
 // --- UTILIDADES ---

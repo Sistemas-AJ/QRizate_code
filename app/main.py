@@ -1,16 +1,31 @@
 # backend/main.py
-
+import socket
 import sys
 import os
 import logging
 import argparse # Importamos argparse para leer el puerto desde la línea de comandos
 from contextlib import asynccontextmanager
 
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # No importa si no hay conexión, solo queremos la IP local
+        s.connect(('10.255.255.255', 1))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = '127.0.0.1'
+    finally:
+        s.close()
+    return ip
+
+local_hostname = get_local_ip()
+
 # --- LEEMOS LOS ARGUMENTOS PRIMERO ---
 # Esto es clave para que 'args' esté disponible globalmente en este script.
 parser = argparse.ArgumentParser()
 parser.add_argument("--port", type=int, default=8000)
-parser.add_argument("--hostname", type=str, default="localhost")
+# Añadimos el nuevo argumento para la URL pública
+parser.add_argument("--public-url", type=str, default="http://localhost:8000/asset.html")
 args = parser.parse_args()
 
 # --- Configuración (sin cambios) ---
@@ -39,9 +54,10 @@ DATABASE_PATH = os.path.join(APP_DATA_DIR, "QRizate.db")
 # --- Lifespan ahora puede "ver" los args y funciona correctamente ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.hostname = args.hostname # Guardamos el hostname para que los routers lo usen
-    app.state.port = args.port         # Guardamos el puerto
-    
+    app.state.hostname = local_hostname # Usamos la IP local obtenida
+    app.state.port = args.port
+    app.state.public_url_base = args.public_url
+
     logging.info(f"Configuración guardada: http://{app.state.hostname}:{app.state.port}")
     logging.info(f"Iniciando base de datos en: {DATABASE_PATH}")
     init_db(DATABASE_PATH)
@@ -114,8 +130,7 @@ def read_root():
 
 # --- Inicio del Servidor Simplificado ---
 if __name__ == "__main__":
-    logging.info(f"Iniciando servidor FastAPI en http://{args.hostname}:{args.port}")
-    
+    logging.info(f"Iniciando servidor FastAPI en http://{local_hostname}:{args.port}")
     uvicorn.run(
         app,
         host="0.0.0.0",
