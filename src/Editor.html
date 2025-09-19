@@ -12,7 +12,6 @@
 <body>
   <div class="container">
     <div class="header">
-        <button onclick="window.location.href='index.html'" class="btn-inicio">
           <i class="fas fa-arrow-left"></i> Inicio
         </button>
         <h1 style="margin:0;">Editor De QR</h1>
@@ -75,6 +74,7 @@
         <button onclick="generatePreview()" class="btn-preview" title="Refrescar Vista Previa">
           <i class="fas fa-eye"></i>
         </button>
+        <a href="index.html" class="btn-inicio"></a>
       </div>
       <input type="file" id="input-excel" accept=".xlsx" style="display:none" onchange="loadExcel(event)">
       <input type="file" id="template-input" accept=".json" style="display:none" onchange="loadTemplate(event)">
