@@ -3,17 +3,116 @@
 // =======================================================================
 
 // --- 1. INICIALIZACIÓN DE VARIABLES GLOBALES ---
+// --- FUNCIONALIDAD DE RESTAURACIÓN DE AUTOGUARDADO ---
+function checkForAutoSave() {
+  // --- NUEVA LÓGICA DE AUTOGUARDADO/RESTAURACIÓN ---
+  const autoSave = localStorage.getItem('editor_autosave');
+  console.log('[AutoSave] checkForAutoSave called.');
+  if (!autoSave) {
+    console.log('[AutoSave] No hay sesión guardada.');
+    return;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(autoSave);
+    console.log('[AutoSave] Datos parseados:', parsed);
+  } catch (e) {
+    console.warn('[AutoSave] Error al parsear sesión guardada:', e);
+    localStorage.removeItem('editor_autosave');
+    return;
+  }
+  // Solo mostrar el diálogo si el canvas está vacío
+  if (canvas && canvas.getObjects().length === 0) {
+    console.log('[AutoSave] Canvas vacío, posible restauración.');
+    if (window.sessionRestored) {
+      console.log('[AutoSave] Sesión ya restaurada, no se repite.');
+      return; // Evita doble restauración
+    }
+    window.sessionRestored = false;
+    if (confirm('¿Deseas restaurar tu sesión anterior?')) {
+      try {
+        // Restaurar datos del Excel y selectores primero
+        if (parsed.dataRows) {
+          window.dataRows = parsed.dataRows;
+          console.log('[AutoSave] dataRows restaurados:', window.dataRows);
+        } else {
+          console.log('[AutoSave] No dataRows en autosave.');
+        }
+        if (typeof populateColumnSelectors === 'function') {
+          populateColumnSelectors();
+          console.log('[AutoSave] populateColumnSelectors ejecutado.');
+        }
+        if (parsed.qrColumn) {
+          const qrColSelect = document.getElementById('qr-column-select');
+          if (qrColSelect) {
+            qrColSelect.value = parsed.qrColumn;
+            console.log('[AutoSave] qrColumn restaurado:', parsed.qrColumn);
+          }
+        } else {
+          console.log('[AutoSave] No qrColumn en autosave.');
+        }
+        if (parsed.filenameColumn) {
+          const filenameColSelect = document.getElementById('filename-column-select');
+          if (filenameColSelect) {
+            filenameColSelect.value = parsed.filenameColumn;
+            console.log('[AutoSave] filenameColumn restaurado:', parsed.filenameColumn);
+          }
+        } else {
+          console.log('[AutoSave] No filenameColumn en autosave.');
+        }
+        // Restaurar el canvas y disparar la vista previa
+        setTimeout(() => {
+          if (parsed.canvas) {
+            console.log('[AutoSave] Restaurando canvas...');
+            canvas.loadFromJSON(parsed.canvas, () => {
+              canvas.renderAll();
+              history = [JSON.stringify(canvas.toJSON())];
+              historyIndex = 0;
+              savedHistoryIndex = 0;
+              console.log('[AutoSave] Canvas restaurado.');
+              if (typeof generatePreview === 'function') {
+                generatePreview();
+                console.log('[AutoSave] generatePreview ejecutado tras restaurar canvas.');
+              }
+              window.sessionRestored = true;
+              alert('¡Sesión restaurada!');
+              localStorage.removeItem('editor_autosave');
+            });
+          } else {
+            console.log('[AutoSave] No canvas en autosave.');
+            if (typeof generatePreview === 'function') {
+              generatePreview();
+              console.log('[AutoSave] generatePreview ejecutado tras restaurar sin canvas.');
+            }
+            window.sessionRestored = true;
+            alert('¡Sesión restaurada!');
+            localStorage.removeItem('editor_autosave');
+          }
+        }, 200);
+      } catch (e) {
+        console.error('[AutoSave] Error al restaurar sesión:', e);
+      }
+    } else {
+      localStorage.removeItem('editor_autosave');
+      console.log('[AutoSave] Sesión descartada por el usuario.');
+    }
+  } else {
+    console.log('[AutoSave] Canvas no está vacío o ya restaurado.');
+  }
+}
 const canvas = new fabric.Canvas('canvas', {
   hoverCursor: 'pointer',
   selection: true,
   selectionBorderColor: '#007bff',
   selectionLineWidth: 2
 });
+window.canvas = canvas;
 // Aumenta el área de sensibilidad de los controles
 fabric.Object.prototype.padding = 8;
 fabric.Object.prototype.cornerSize = 14;
 fabric.Object.prototype.hoverCursor = 'pointer';
 let dataRows = [];
+window.dataRows = dataRows;
 let zip = new JSZip();
 let fileNameCounts = {};
 let history = [];
@@ -27,6 +126,7 @@ function addText() {
   const text = new fabric.Textbox('Ingrese texto...', {
     left: 100, top: 100, fontSize: 20, fill: '#000000',
     textAlign: 'left', fontFamily: 'Arial', width: 300
+
   });
   canvas.add(text);
 }
@@ -599,8 +699,10 @@ document.addEventListener('DOMContentLoaded', () => {
   dragElement(document.getElementById("floating-toolbar"));
   closeTemplateModal();
 
-  // --- BLOQUE DE LISTENERS CENTRALIZADO Y ÚNICO ---
+  // === Llamada a la restauración de autosave ===
+  checkForAutoSave();
 
+  // Listeners para input-image, columns-menu, toolbar, etc.
   document.getElementById('input-image').addEventListener('change', function (event) {
     const file = event.target.files[0];
     if (!file) return;

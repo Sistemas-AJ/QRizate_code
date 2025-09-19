@@ -125,6 +125,25 @@ function inicializarAtajos(canvas, fns) {
 
   // Listener para salir de la página
   window.addEventListener('beforeunload', (event) => {
+    // === AUTOGUARDADO DE SESIÓN ANTES DE SALIR ===
+    try {
+      // Guardar el estado completo en una sola clave, aunque estén vacíos
+      const canvasData = (window.canvas && typeof window.canvas.toJSON === 'function') ? window.canvas.toJSON() : null;
+      const dataRowsData = (typeof window.dataRows !== 'undefined') ? window.dataRows : null;
+      const qrColumnValue = document.getElementById('qr-column-select') ? document.getElementById('qr-column-select').value : null;
+      const filenameColumnValue = document.getElementById('filename-column-select') ? document.getElementById('filename-column-select').value : null;
+      const autoSave = {
+        canvas: canvasData,
+        dataRows: dataRowsData,
+        qrColumn: qrColumnValue,
+        filenameColumn: filenameColumnValue
+      };
+      localStorage.setItem('editor_autosave', JSON.stringify(autoSave));
+      console.log('[AutoSave] Sesión guardada en localStorage:', autoSave);
+    } catch (e) {
+      console.error('[AutoSave] Error al guardar sesión:', e);
+    }
+
     // Solo bloquea si hay cambios Y no se ha dado permiso explícito
     if (historyIndex !== savedHistoryIndex && !window.canLeavePage) {
       event.preventDefault();

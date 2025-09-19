@@ -160,10 +160,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <script src="svg2pdf.umd.min.js"></script>
+    <script src="js/svg2pdf.umd.min.js"></script>
     <script src="js/qr.js"></script>
     <script src="js/atajos.js"></script>
     <script src="js/diseño.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof checkForAutoSave === 'function') {
+          checkForAutoSave();
+        }
+      });
+    </script>
   </div>
 </body>
 
