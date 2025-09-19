@@ -11,36 +11,28 @@
 
     <div class="app-bar">
       <span class="app-bar__title">Generador de QR</span>
+
       <div style="flex-grow: 1"></div>
-      <button class="app-bar-btn" id="show-pairing-modal-btn">
-        📱 Conectar Celular
+      <input
+        type="text"
+        id="input-sede-id"
+        placeholder="ID de Sede"
+        style="margin-left: 20px; max-width: 150px"
+      />
+      <button class="app-bar-btn" id="guardar-sede-btn">
+        Nombre de compañia
       </button>
+
       <button class="app-bar-btn" id="ver-qr-btn">Ver QR</button>
       <button class="app-bar-btn" id="ver-datos-btn">Ver Datos</button>
     </div>
 
     <div class="main-container">
-      <div class="config-red">
-        <label
-          >IP manual:
-          <input type="text" id="manual_ip" placeholder="Ej: 192.168.1.100" />
-        </label>
-        <label
-          >Puerto manual:
-          <input type="number" id="manual_port" placeholder="Ej: 8000" />
-        </label>
-        <div id="ip-port-actual">Conectando...</div>
-        <span
-          >(Si se completan, se usan estos valores en vez de los
-          automáticos)</span
-        >
-      </div>
-
       <div class="qr-flex">
         <form class="qrform" id="qr-form">
           <div class="excel-upload-wrapper">
             <div class="excel-upload-header">
-              <span class="excel-upload-icon">📄</span>
+              <span class="excel-upload-icon"></span>
               <span class="excel-upload-label"
                 >Cargar archivo Excel (.xlsx)</span
               >
@@ -51,12 +43,14 @@
               </label>
               <div class="excel-filename-container">
                 <span id="excel-upload-filename"
-                  >Sin archivos seleccionados</span
+                  >Sin archivos seleccionados (Asegúrese de incluir los campos
+                  obligatorios)</span
                 >
               </div>
               <input type="file" id="excel-upload" accept=".xlsx,.xls" />
             </div>
           </div>
+          <div id="bulk-qr-container"></div>
 
           <div class="qrform-grid">
             <div>
@@ -183,6 +177,9 @@
             <div class="qrform-btns">
               <button type="submit" class="qrform-submit">Generar QR</button>
             </div>
+          </div>
+          <div class="config-red">
+            <div id="ip-port-actual">Conectando...</div>
           </div>
         </form>
 

@@ -6,6 +6,32 @@
   --upao-light-gold: #F2EBD9;
 }
 
+.sede-label {
+  display: none !important;  
+  margin-left: 32px;
+    padding: 5px 18px;
+    color: #fff;
+    border-radius: 16px;
+    font-size: 1.05em;
+    font-weight: 600;
+    vertical-align: middle;
+    display: inline-block;
+    box-shadow: 0 2px 8px #0002;
+    letter-spacing: 1px;
+}
+
+.sede-value {
+    margin-left: 30px;
+    padding: 1px 18px;
+    font-size: 1.3rem;
+    background: #ff6b00;
+    color: #fff;
+    border-radius: 5px;
+    font-weight: 600;
+    vertical-align: middle;
+    display: inline-block;
+    letter-spacing: 1px;
+}
 /* ===== CONTENEDOR PRINCIPAL ===== */
 .main-container {
   margin: 80px auto 40px;
@@ -24,11 +50,8 @@
 .config-red {
   display: flex;
   align-items: center;
-  gap: 28px;
   border-radius: 15px;
-  border-top: 4px solid #FF6B00;
-  padding: 25px 40px;
-  margin-bottom: 36px;
+  margin-left:10px;
   font-size: 1.1rem;
   position: relative;
   min-width: 340px;
@@ -613,4 +636,54 @@ form#qrform button[type="submit"]:active {
 
 #excel-upload {
     display: none;
+}
+
+#notification-area {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    pointer-events: none;
+}
+.notification {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    padding: 12px 20px;
+    margin-bottom: 12px;
+    font-size: 1.1em;
+    font-weight: 500;
+    min-width: 220px;
+    max-width: 350px;
+    border-left: 6px solid #4caf50;
+    opacity: 0;
+    transform: scale(0.7);
+    transition: transform 0.3s, opacity 0.3s;
+    pointer-events: auto;
+}
+.notification.success { border-left-color: #4caf50; }
+.notification.error { border-left-color: #f44336; }
+.notification.warning { border-left-color: #ff9800; }
+.notification-icon {
+    font-size: 1.5em;
+    margin-right: 12px;
+}
+
+.notification-pop {
+    animation: pop-bomb 0.5s cubic-bezier(.68,-0.55,.27,1.55) forwards;
+}
+@keyframes pop-bomb {
+    0% { opacity: 0; transform: scale(0.7); }
+    60% { opacity: 1; transform: scale(1.2); }
+    80% { opacity: 1; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
+}
+.notification-hide {
+    animation: hide-bomb 0.4s forwards;
+}
+@keyframes hide-bomb {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.7); }
 }

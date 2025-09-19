@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 import asyncio
 import websockets
 import json
-
+from fastapi import Body
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -24,6 +24,22 @@ import uvicorn
 # ¡IMPORTANTE! Edita estos valores según tu configuración
 VPS_WEBSOCKET_URL = "wss://qrizate.systempiura.com/ws/" # Tu dominio seguro con wss://
 SEDE_ID = "Oficinas-AJ" # ¡IDENTIFICADOR ÚNICO PARA ESTA MÁQUINA!
+
+CONFIG_PATH = 'config.json'
+
+def load_config():
+    if not os.path.exists(CONFIG_PATH):
+        return {} # Si no hay config, empieza vacío
+    with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def save_config(config_data):
+    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(config_data, f, indent=4)
+
+config = load_config()
+# La tarea del WebSocket se guarda aquí para poder manejarla
+vps_connection_task = None 
 
 # --- CÓDIGO INICIAL (sin cambios) ---
 def get_local_ip():
@@ -94,12 +110,12 @@ def get_asset_html_from_db(asset_id: str) -> str:
     finally:
         db_session.close()
 
-async def connect_to_vps_and_listen():
-    uri = f"{VPS_WEBSOCKET_URL}{SEDE_ID}"
+async def connect_to_vps_and_listen(sede_id, vps_url):
+    uri = f"{vps_url}{sede_id}"
     while True:
         try:
             async with websockets.connect(uri) as websocket:
-                logging.info(f" Conectado al VPS como sede '{SEDE_ID}'")
+                logging.info(f" Conectado al VPS como sede '{sede_id}'")
                 async for message in websocket:
                     logging.info(f"<- Mensaje recibido del VPS: {message}")
                     try:
@@ -124,20 +140,28 @@ async def connect_to_vps_and_listen():
 # --- 3. LIFESPAN MODIFICADO ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global vps_connection_task
+    # La app arranca e inicializa la BD
+    logging.info(f"Iniciando servidor local en http://{local_hostname}:{args.port}")
     logging.info(f"Iniciando base de datos en: {DATABASE_PATH}")
     init_db(DATABASE_PATH)
     
-    # Pasamos la configuración a la app para que los routers la puedan usar
-    app.state.SEDE_ID = SEDE_ID
-    app.state.PUBLIC_URL_BASE = f"https://qrizate.systempiura.com/activo"
+    # Intenta conectar automáticamente si ya hay una configuración guardada
+    saved_config = load_config()
+    if saved_config.get("sede_id"):
+        logging.info(f"Configuración encontrada. Conectando automáticamente como Sede: {saved_config['sede_id']}")
+        app.state.SEDE_ID = saved_config['sede_id']
+        app.state.PUBLIC_URL_BASE = "https://qrizate.systempiura.com/activo"
+        vps_connection_task = asyncio.create_task(connect_to_vps_and_listen(saved_config['sede_id'], saved_config['vps_websocket_url']))
+    else:
+        logging.warning("No se encontró configuración de sede. Esperando configuración desde el frontend...")
 
-    logging.info("Iniciando cliente WebSocket para conectar con el VPS...")
-    app.state.websocket_client_task = asyncio.create_task(connect_to_vps_and_listen())
-    
     yield
     
-    logging.info("Cerrando aplicación y cliente WebSocket...")
-    app.state.websocket_client_task.cancel()
+    # Al cerrar la app, cancela la tarea de fondo si existe
+    if vps_connection_task:
+        logging.info("Cerrando conexión con VPS...")
+        vps_connection_task.cancel()
 
 # --- Aplicación FastAPI (Limpia y actualizada) ---
 app = FastAPI(
@@ -146,6 +170,28 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan
 )
+
+@app.post("/configure")
+async def configure_sede(data: dict = Body(...)):
+    global vps_connection_task
+    sede_id = data.get("sede_id")
+    vps_url = data.get("vps_websocket_url", VPS_WEBSOCKET_URL)
+    if not sede_id:
+        return {"detail": "Falta sede_id"}, 400
+    config = load_config()
+    config["sede_id"] = sede_id
+    config["vps_websocket_url"] = vps_url
+    save_config(config)
+    app.state.SEDE_ID = sede_id
+    app.state.PUBLIC_URL_BASE = "https://qrizate.systempiura.com/activo"
+    # Si ya hay una tarea de conexión, cancélala
+    if vps_connection_task:
+        vps_connection_task.cancel()
+    # Inicia la conexión con la nueva sede
+    vps_connection_task = asyncio.create_task(connect_to_vps_and_listen(sede_id, vps_url))
+    logging.info(f"Sede configurada desde frontend: {sede_id}. Conectando al VPS...")
+    return {"sede_id_registrado": sede_id}
+
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(activos_router)

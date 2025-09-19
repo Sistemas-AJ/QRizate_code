@@ -54,7 +54,7 @@ function init() {
     const showModalBtn = document.getElementById('show-pairing-modal-btn');
     const closeModalBtn = document.getElementById('close-modal-btn');
     const modalOverlay = document.getElementById('pairing-modal');
-
+    
     // Al hacer clic en "Conectar Celular", mostramos el modal
     showModalBtn.addEventListener('click', () => {
         modalOverlay.style.display = 'flex';
@@ -72,10 +72,85 @@ function init() {
             modalOverlay.style.display = 'none';
         }
     });
+
+    const sedeIdInput = document.getElementById('input-sede-id');
+    const savedSedeId = localStorage.getItem('qr_app_sede_id') || '';
+    sedeIdInput.value = savedSedeId;
+
+    // Deshabilita el botón si el campo está vacío
+    sedeIdInput.addEventListener('input', () => {
+        document.getElementById('guardar-sede-btn').disabled = !sedeIdInput.value.trim();
+    });
+    document.getElementById('guardar-sede-btn').disabled = !sedeIdInput.value.trim();
     console.log("✅ Aplicación inicializada.");
+    const sedeId = localStorage.getItem('qr_app_sede_id');
+    if (sedeId) {
+        guardarConfiguracion();
+    }
 
 }
 
+document.getElementById('guardar-sede-btn').addEventListener('click', async () => {
+    let sedeId = document.getElementById('input-sede-id').value;
+    sedeId = limpiarSedeId(sedeId);
+    if (!sedeId) return alert('Ingresa un ID de sede válido (solo letras, números, guiones y guiones bajos).');
+    document.getElementById('input-sede-id').value = sedeId; // Actualiza el campo con el formato limpio
+    localStorage.setItem('qr_app_sede_id', sedeId);
+    window.electronAPI.setSedeId(sedeId);
+    await guardarConfiguracion();
+    showNotification(`Sede guardada: ${sedeId}`, 'success');
+});
+
+
+function mostrarSedeActual() {
+    const sedeId = localStorage.getItem('qr_app_sede_id') || '';
+    const appBar = document.querySelector('.app-bar__title');
+    if (appBar) {
+        appBar.innerHTML = `
+            <span>Generador de QR</span>
+            <span class="sede-label">${sedeId ? 'Sede:' : 'Sin sede configurada'}</span>
+            ${sedeId ? `<span class="sede-value">${sedeId}</span>` : ''}
+        `;
+    }
+}
+document.addEventListener('DOMContentLoaded', mostrarSedeActual);
+
+async function guardarConfiguracion() {
+    const sedeIdInput = document.getElementById('input-sede-id');
+    const nuevaSedeId = sedeIdInput.value.trim();
+
+    if (!nuevaSedeId) {
+        showNotification('Por favor, introduce un ID de Sede válido.', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('http://localhost:8000/configure', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ sede_id: nuevaSedeId }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert(`Configuración guardada con éxito. Sus QR contienen la direccion: ${result.sede_id_registrado}`);
+        } else {
+            throw new Error(result.detail || 'Error al guardar la configuración.');
+        }
+
+    } catch (error) {
+        console.error('Error al enviar la configuración al backend:', error);
+        showNotification(`Error: No se pudo comunicar con el backend. Asegúrate de que esté corriendo.\n\n${error.message}`, 'error');
+    }
+}
+
+function limpiarSedeId(sedeId) {
+    // Elimina espacios, convierte a mayúsculas y reemplaza espacios por guiones bajos
+    return sedeId.trim().toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_-]/g, '');
+}
 
 // 4. Cuando el DOM esté listo, inicializamos los listeners
 document.addEventListener('DOMContentLoaded', init);
@@ -420,9 +495,83 @@ function showNotification(message, type = 'success') {
     const notificationArea = document.getElementById('notification-area');
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
-    notification.textContent = message;
+
+    // Iconos según el tipo
+    let icon = '';
+    if (type === 'success') icon = '✅';
+    else if (type === 'error') icon = '❌';
+    else if (type === 'warning') icon = '⚠️';
+    else icon = 'ℹ️';
+
+    notification.innerHTML = `
+        <span class="notification-icon">${icon}</span>
+        <span class="notification-message">${message}</span>
+    `;
+
     notificationArea.appendChild(notification);
+
+    // Animación tipo bomba usando clases CSS
     setTimeout(() => {
-        notification.remove();
-    }, 5000);
+        notification.classList.add('notification-pop');
+    }, 50);
+
+    setTimeout(() => {
+        notification.classList.remove('notification-pop');
+        notification.classList.add('notification-hide');
+        setTimeout(() => notification.remove(), 400);
+    }, 4000);
+}
+
+function showModalDialog(message, title = "qrizate") {
+    // Crea el modal si no existe
+    let modal = document.getElementById('custom-alert-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'custom-alert-modal';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.background = 'rgba(0,0,0,0.25)';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.zIndex = '99999';
+
+        modal.innerHTML = `
+            <div style="
+                background: #fff;
+                border-radius: 10px;
+                box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+                padding: 24px 32px;
+                min-width: 320px;
+                max-width: 90vw;
+                text-align: left;
+                font-size: 1.1em;
+            ">
+                <div style="font-weight: bold; margin-bottom: 12px;">${title}</div>
+                <div id="custom-alert-message" style="margin-bottom: 18px;">${message}</div>
+                <button id="custom-alert-ok" style="
+                    padding: 8px 24px;
+                    border-radius: 6px;
+                    border: none;
+                    background: #1976d2;
+                    color: #fff;
+                    font-size: 1em;
+                    cursor: pointer;
+                ">Aceptar</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    } else {
+        document.getElementById('custom-alert-message').textContent = message;
+        modal.style.display = 'flex';
+    }
+
+    document.getElementById('custom-alert-ok').onclick = () => {
+        modal.style.display = 'none';
+    };
+
+
 }
