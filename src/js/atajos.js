@@ -179,5 +179,5 @@ function inicializarAtajos(canvas, fns) {
     }
   });
 
-  console.log("✅ Atajos de teclado inicializados.");
+  console.log("Atajos de teclado inicializados.");
 }

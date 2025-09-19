@@ -5,11 +5,35 @@
 // --- 1. INICIALIZACIÓN DE VARIABLES GLOBALES ---
 
 // CAMBIO: La función checkForAutoSave está completamente corregida para manejar el foco.
-function checkForAutoSave() {
+function showModal(message, buttons) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('modal-overlay');
+    const messageEl = document.getElementById('modal-message');
+    const buttonsEl = document.getElementById('modal-buttons');
+
+    messageEl.textContent = message;
+    buttonsEl.innerHTML = ''; // Limpiar botones anteriores
+
+    buttons.forEach(btnInfo => {
+      const button = document.createElement('button');
+      button.textContent = btnInfo.text;
+      button.className = btnInfo.class;
+      button.onclick = () => {
+        overlay.style.display = 'none';
+        resolve(btnInfo.value);
+      };
+      buttonsEl.appendChild(button);
+    });
+
+    overlay.style.display = 'flex';
+  });
+}
+
+// --- Versión MODIFICADA de checkForAutoSave ---
+async function checkForAutoSave() {
   const autoSave = localStorage.getItem('editor_autosave');
   console.log('[AutoSave] checkForAutoSave called.');
   if (!autoSave) {
-    console.log('[AutoSave] No hay sesión guardada.');
     return;
   }
 
@@ -17,21 +41,21 @@ function checkForAutoSave() {
   try {
     parsed = JSON.parse(autoSave);
   } catch (e) {
-    console.warn('[AutoSave] Error al parsear sesión guardada:', e);
     localStorage.removeItem('editor_autosave');
     return;
   }
 
   if (canvas && canvas.getObjects().length === 0) {
-    if (window.sessionRestored) {
-      return;
-    }
+    if (window.sessionRestored) return;
     window.sessionRestored = false;
 
-    const userConfirmed = confirm('¿Deseas restaurar tu sesión anterior?');
+    // 1. Reemplazamos confirm() con nuestro modal
+    const userConfirmed = await showModal('¿Deseas restaurar tu sesión anterior?', [
+      { text: 'Restaurar', value: true, class: 'primary' },
+      { text: 'No, gracias', value: false, class: 'secondary' }
+    ]);
 
-    // Se fuerza el foco después del primer diálogo
-    window.focus();
+    // YA NO NECESITAMOS window.focus() aquí
 
     if (userConfirmed) {
       try {
@@ -45,10 +69,10 @@ function checkForAutoSave() {
           const filenameColSelect = document.getElementById('filename-column-select');
           if (filenameColSelect) filenameColSelect.value = parsed.filenameColumn;
         }
-        
-        setTimeout(() => {
+
+        setTimeout(async () => { // Hacemos el callback async
           if (parsed.canvas) {
-            canvas.loadFromJSON(parsed.canvas, () => {
+            canvas.loadFromJSON(parsed.canvas, async () => {
               canvas.renderAll();
               history = [JSON.stringify(canvas.toJSON())];
               historyIndex = 0;
@@ -56,19 +80,11 @@ function checkForAutoSave() {
               if (typeof generatePreview === 'function') generatePreview();
               window.sessionRestored = true;
 
-              alert('¡Sesión restaurada!');
-              // Se fuerza el foco OTRA VEZ después de la segunda alerta
-              window.focus();
+              // 2. Reemplazamos alert() con nuestro modal
+              await showModal('¡Sesión restaurada!', [{ text: 'Aceptar', value: 'ok', class: 'primary' }]);
+              // YA NO NECESITAMOS window.focus() aquí tampoco
               localStorage.removeItem('editor_autosave');
             });
-          } else {
-            if (typeof generatePreview === 'function') generatePreview();
-            window.sessionRestored = true;
-            
-            alert('¡Sesión restaurada!');
-            // Se fuerza el foco OTRA VEZ después de la segunda alerta
-            window.focus();
-            localStorage.removeItem('editor_autosave');
           }
         }, 200);
       } catch (e) {
@@ -516,7 +532,7 @@ function changeCase(targetCase) {
         const start = activeObject.selectionStart;
         const end = activeObject.selectionEnd;
         const selectedText = activeObject.getSelectedText();
-        const newSelectedText = (targetCase === 'upper') ? selectedText.toUpperCase() : selected.toLowerCase();
+  const newSelectedText = (targetCase === 'upper') ? selectedText.toUpperCase() : selectedText.toLowerCase();
         
         const originalText = activeObject.text;
         const newFullText = originalText.slice(0, start) + newSelectedText + originalText.slice(end);
