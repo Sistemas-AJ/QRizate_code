@@ -55,10 +55,7 @@ function createWindow() {
     }
   );
 
-  // Opcional: Abrir DevTools en desarrollo
-  if (!app.isPackaged) {
-    mainWindow.webContents.openDevTools();
-  }
+  // Si necesitas depurar, abre DevTools manualmente desde el menú de Electron.
 }
 
 // Cuando la app está lista
