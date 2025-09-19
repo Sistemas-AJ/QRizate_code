@@ -93,7 +93,10 @@ function init() {
 document.getElementById('guardar-sede-btn').addEventListener('click', async () => {
     let sedeId = document.getElementById('input-sede-id').value;
     sedeId = limpiarSedeId(sedeId);
-    if (!sedeId) return alert('Ingresa un ID de sede válido (solo letras, números, guiones y guiones bajos).');
+    if (!sedeId) {
+        showNotification('Ingresa un ID de sede válido (solo letras, números, guiones y guiones bajos).', 'error');
+        return;
+    }
     document.getElementById('input-sede-id').value = sedeId; // Actualiza el campo con el formato limpio
     localStorage.setItem('qr_app_sede_id', sedeId);
     window.electronAPI.setSedeId(sedeId);
@@ -136,7 +139,7 @@ async function guardarConfiguracion() {
         const result = await response.json();
 
         if (response.ok) {
-            alert(`Configuración guardada con éxito. Sus QR contienen la direccion: ${result.sede_id_registrado}`);
+            showNotification(`Configuración guardada con éxito. Sus QR contienen la dirección: ${result.sede_id_registrado}`, 'success');
         } else {
             throw new Error(result.detail || 'Error al guardar la configuración.');
         }
@@ -385,7 +388,8 @@ function parseAndSendExcel(file) {
             const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
             if (!rows.length) {
-                return showNotification('El archivo Excel está vacío.', 'error');
+                showNotification('El archivo Excel está vacío.', 'error');
+                return;
             }
             const mappedRows = mapExcelRows(rows);
             const validRows = mappedRows.filter(row => row.correlativo && row.sede && row.area);
@@ -446,7 +450,8 @@ async function sendBulkDataToApi(data) {
         });
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(errorText || `Error del servidor: ${response.status}`);
+            showNotification(errorText || `Error del servidor: ${response.status}`, 'error');
+            return;
         }
         const result = await response.json();
         console.log('Respuesta de bulk-create:', result);

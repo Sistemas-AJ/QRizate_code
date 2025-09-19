@@ -181,31 +181,99 @@ function loadExcel(event) {
     const data = e.target.result;
     const workbook = XLSX.read(data, { type: 'binary' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    dataRows = XLSX.utils.sheet_to_json(sheet);
+    
+    // ===== CAMBIO: USA LA VARIABLE GLOBAL =====
+    window.dataRows = XLSX.utils.sheet_to_json(sheet);
+    
     alert('Datos de Excel cargados.');
     populateColumnSelectors();
     document.getElementById('columns-menu').disabled = false;
+    
+    // Al cargar desde Excel, también refrescamos la vista previa
+    generatePreview(); 
   };
   reader.readAsBinaryString(file);
 }
 
+async function loadDataFromAPI() {
+  const apiUrl = 'http://localhost:8000/activos/';
+  
+  showModal('Cargando datos desde la API...', []);
+
+  try {
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      throw new Error(`Error en la red: ${response.status} - ${response.statusText}`);
+    }
+
+    const apiData = await response.json();
+    console.log("Datos recibidos de la API:", apiData);
+
+    if (Array.isArray(apiData) && apiData.length > 0) {
+      window.dataRows = apiData;
+      populateColumnSelectors();
+      document.getElementById('columns-menu').disabled = false;
+      
+      // ===============================================================
+      // ===== LÍNEA CLAVE AÑADIDA: Forzamos el refresco del preview =====
+      console.log('Datos cargados, forzando actualización de la Vista Previa...');
+      generatePreview();
+      // ===============================================================
+      
+      showModal('¡Datos cargados correctamente desde la API!', [
+        { text: 'Aceptar', value: 'ok', class: 'primary' }
+      ]);
+    } else {
+      throw new Error("La API no devolvió datos válidos o la lista está vacía.");
+    }
+
+  } catch (error) {
+    console.error('Falló la carga de datos desde la API:', error);
+    showModal(`Error al cargar los datos: ${error.message}`, [
+      { text: 'Cerrar', value: 'ok', class: 'secondary' }
+    ]);
+  }
+}
+
+
 function populateColumnSelectors() {
-  const columnsMenu = document.getElementById("columns-menu");
-  const qrColumnSelect = document.getElementById("qr-column-select");
-  const filenameColumnSelect = document.getElementById("filename-column-select");
-  columnsMenu.innerHTML = '<option value="">(seleccionar)</option>';
-  qrColumnSelect.innerHTML = "<option value=''>Por defecto ('qr')</option>";
-  filenameColumnSelect.innerHTML = "<option value=''>Por defecto ('nombre')</option>";
-  if (dataRows.length > 0) {
-    const columns = Object.keys(dataRows[0]);
+  // Obtenemos los 3 menús desplegables
+  const selectsToPopulate = [
+    document.getElementById("columns-menu"),
+    document.getElementById("qr-column-select"),
+    document.getElementById("filename-column-select")
+  ];
+
+  // 1. Limpiamos las opciones viejas de cada <select> de forma segura,
+  //    dejando solo la primera opción ("seleccionar", "por defecto", etc.)
+  selectsToPopulate.forEach(selectElement => {
+    while (selectElement.options.length > 1) {
+      selectElement.remove(1);
+    }
+  });
+
+  // 2. Verificamos que tengamos datos para agregar
+  if (window.dataRows && window.dataRows.length > 0) {
+    
+    // 3. Obtenemos las cabeceras (keys) del primer objeto de datos
+    const columns = Object.keys(window.dataRows[0]);
+
+    // 4. Creamos y añadimos las nuevas opciones a cada <select>
     columns.forEach(col => {
       const option = document.createElement("option");
       option.value = col;
-      option.text = col;
-      columnsMenu.appendChild(option.cloneNode(true));
-      qrColumnSelect.appendChild(option.cloneNode(true));
-      filenameColumnSelect.appendChild(option.cloneNode(true));
+      option.textContent = col; // Usar textContent es más seguro
+
+      // Añadimos la nueva opción a los tres menús
+      selectsToPopulate.forEach(selectElement => {
+        selectElement.appendChild(option.cloneNode(true));
+      });
     });
+    
+    console.log('✅ Menús desplegables poblados con:', columns);
+  } else {
+    console.warn('⚠️ No se encontraron datos en window.dataRows para poblar los menús.');
   }
 }
 
@@ -287,7 +355,7 @@ function hideProgress() {
 
 async function generateCertificates() {
   if (dataRows.length === 0) {
-    alert("Por favor, carga un archivo de Excel antes de generar los certificados.");
+    showNotification('No hay datos disponibles para generar certificados.', 'error');
     return;
   }
   zip = new JSZip();
@@ -335,7 +403,7 @@ async function generateCertificates() {
 
     hideProgress();
     downloadAll();
-    alert("¡Certificados generados y listos para descargar!");
+    showNotification("¡Certificados generados y listos para descargar!", 'success');
 
   }, 50);
 }
@@ -425,17 +493,17 @@ function exportSinglePDF() {
       pdf.save('Certificado_Unico.pdf');
     }).catch((error) => {
       console.error("Error al renderizar el SVG en el PDF:", error);
-      alert("Hubo un error al generar el PDF. Revisa la consola para más detalles.");
+      showNotification("Hubo un error al generar el PDF. Revisa la consola para más detalles.", 'error');
     });
   } catch (error) {
     console.error("Error general al exportar PDF único:", error);
-    alert("Hubo un error al generar el PDF. Revisa la consola para más detalles.");
+    showNotification("Hubo un error al generar el PDF. Revisa la consola para más detalles.", 'error');
   }
 }
 
 function downloadAll() {
   if (Object.keys(zip.files).length === 0) {
-    alert("No hay certificados generados para descargar. Usa 'Generar Certificados' primero.");
+    showNotification("No hay certificados generados para descargar. Usa 'Generar Certificados' primero.", 'error');
     return;
   }
   zip.generateAsync({ type: 'blob' }).then(function (content) {
@@ -458,40 +526,43 @@ function generatePreview() {
 
   previewCanvas.loadFromJSON(canvas.toJSON(), () => {
     const promises = [];
-
-    if (dataRows.length > 0 && dataRows[0]) {
-      const row = dataRows[0];
+    if (window.dataRows && window.dataRows.length > 0) {
+      const row = window.dataRows[0];
       const qrColumn = document.getElementById('qr-column-select').value;
 
       previewCanvas.getObjects().forEach(obj => {
-        if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
-          if (obj.text.includes('{{qr}}')) {
-            const qrPromise = new Promise(resolve => {
-              let qrData = qrColumn ? row[qrColumn] : (row['qr'] || row['QR'] || row['Qr']);
-              if (qrData) {
-                QRCode.toDataURL(qrData, { width: obj.getScaledWidth(), margin: 1 }, (err, url) => {
-                  if (url) {
-                    fabric.Image.fromURL(url, qrImg => {
-                      qrImg.set({ left: obj.left, top: obj.top, angle: obj.angle });
-                      previewCanvas.remove(obj);
-                      previewCanvas.add(qrImg);
-                      resolve();
-                    });
-                  } else { resolve(); }
-                });
-              } else {
-                previewCanvas.remove(obj);
-                resolve();
-              }
-            });
-            promises.push(qrPromise);
-          } else {
-            replaceTextWithStyles(obj, row);
+  // Si el texto contiene el placeholder de la columna seleccionada para QR, genera el QR
+  if (
+    (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') &&
+    obj.text.includes(`{{${qrColumn}}}`)
+  ) {
+    const qrPromise = new Promise(resolve => {
+      let qrData = row[qrColumn];
+      if (qrData) {
+        QRCode.toDataURL(qrData.toString(), { width: obj.getScaledWidth(), margin: 1 }, (err, url) => {
+          if (err) {
+            console.error('Error generando QR:', err);
+            previewCanvas.remove(obj);
+            return resolve();
           }
-        }
-      });
+          fabric.Image.fromURL(url, qrImg => {
+            qrImg.set({ left: obj.left, top: obj.top, angle: obj.angle });
+            previewCanvas.remove(obj);
+            previewCanvas.add(qrImg);
+            resolve();
+          });
+        }); 
+      } else {
+        previewCanvas.remove(obj);
+        resolve();
+      }
+    });
+    promises.push(qrPromise);
+  } else if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
+    replaceTextWithStyles(obj, row);
+  }
+});
     }
-
     Promise.all(promises).then(() => {
       previewCanvas.renderAll();
     });
@@ -590,7 +661,14 @@ function replaceTextWithStyles(obj, rowData) {
       const key = placeholder.replace(/[{}]/g, '');
       if (rowData.hasOwnProperty(key)) {
         const replacement = rowData[key] || '';
+        
+        // --- Añade este log para ver la magia en acción ---
+        console.log(`Reemplazando '${placeholder}' con el valor: '${replacement}'`);
+        
         text = text.split(placeholder).join(replacement);
+      } else {
+        // --- Y este para ver si no encuentra una clave ---
+        console.warn(`El placeholder '${placeholder}' no corresponde a ninguna clave en los datos.`);
       }
     });
   }
@@ -748,3 +826,39 @@ document.getElementById("text-italic").addEventListener("change", (e) => {
       }
   }, 250);
 });
+
+
+
+
+function showNotification(message, type = 'info') {
+  let area = document.getElementById('notification-area');
+  if (!area) {
+    area = document.createElement('div');
+    area.id = 'notification-area';
+    area.style.position = 'fixed';
+    area.style.top = '24px';
+    area.style.right = '24px';
+    area.style.zIndex = '9999';
+    document.body.appendChild(area);
+  }
+  const notif = document.createElement('div');
+  notif.className = `notification ${type}`;
+  notif.textContent = message;
+  notif.style.cssText = `
+    background:#1976d2;color:#fff;padding:12px 24px;border-radius:8px;
+    margin-bottom:10px;box-shadow:0 2px 8px #0002;font-weight:500;min-width:220px;
+    font-size:1em;opacity:0;transform:scale(0.7);transition:none;
+  `;
+  area.appendChild(notif);
+  setTimeout(() => {
+    notif.style.opacity = '1';
+    notif.style.transform = 'scale(1)';
+    notif.style.transition = 'all 0.3s cubic-bezier(.68,-0.55,.27,1.55)';
+  }, 50);
+  setTimeout(() => {
+    notif.style.opacity = '0';
+    notif.style.transform = 'scale(0.7)';
+    notif.style.transition = 'all 0.4s';
+    setTimeout(() => notif.remove(), 400);
+  }, 3200);
+}
