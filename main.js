@@ -1,3 +1,4 @@
+
 require('electron-reload')(__dirname, {
   electron: require('path').join(__dirname, 'node_modules', '.bin', 'electron.cmd'),
   ignored: /node_modules|[\/\\]\./
@@ -46,6 +47,13 @@ function createWindow() {
   });
   
   mainWindow.loadFile('src/index.html');
+  // =================================================================
+  // LA LÍNEA CLAVE QUE RESUELVE EL PROBLEMA DE FOCO
+  // =================================================================
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.focus();
+  });
+  // =================================================================
   
   // Habilitar CORS para las peticiones al backend
   mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
@@ -61,6 +69,17 @@ function createWindow() {
   );
 
   // Si necesitas depurar, abre DevTools manualmente desde el menú de Electron.
+    // --- INTEGRACIÓN: Canal IPC para flash DevTools ---
+    ipcMain.on('devtools-flash', (event) => {
+      if (mainWindow && !mainWindow.webContents.isDevToolsOpened()) {
+        mainWindow.webContents.openDevTools({ mode: 'detach' });
+        setTimeout(() => {
+          if (mainWindow && mainWindow.webContents.isDevToolsOpened()) {
+            mainWindow.webContents.closeDevTools();
+          }
+        }, 1000); // 1 segundo
+      }
+    });
 }
 
 // Cuando la app está lista

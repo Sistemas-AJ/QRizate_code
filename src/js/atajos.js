@@ -1,9 +1,12 @@
+// atajos.js
+
 function inicializarAtajos(canvas, fns) {
   let clipboard = null;
   let isInternalCopy = false;
-  window.canLeavePage = false; // <-- Bandera global para navegación controlada
+  window.canLeavePage = false; // Bandera global para navegación controlada
 
   const copyObject = () => {
+    // ... (El contenido de esta función no cambia)
     const activeObject = canvas.getActiveObject();
     if (activeObject) {
       activeObject.clone(cloned => {
@@ -15,6 +18,7 @@ function inicializarAtajos(canvas, fns) {
   };
 
   async function paste() {
+    // ... (El contenido de esta función no cambia)
     if (isInternalCopy && clipboard) {
       clipboard.clone(clonedObj => {
         canvas.discardActiveObject();
@@ -40,7 +44,6 @@ function inicializarAtajos(canvas, fns) {
     try {
       const clipboardItems = await navigator.clipboard.read();
       for (const item of clipboardItems) {
-        // Lógica para pegar imágenes
         const imageType = item.types.find(type => type.startsWith("image/"));
         if (imageType) {
           const blob = await item.getType(imageType);
@@ -60,7 +63,6 @@ function inicializarAtajos(canvas, fns) {
           return;
         }
 
-        // Lógica para pegar texto
         const textType = item.types.find(type => type === "text/plain");
         if (textType) {
           const blob = await item.getType(textType);
@@ -82,34 +84,60 @@ function inicializarAtajos(canvas, fns) {
     }
   }
 
-  // --- LÓGICA CORREGIDA PARA RESETEAR LA BANDERA ---
   const resetInternalCopyFlag = () => {
+    // ... (El contenido de esta función no cambia)
     if (isInternalCopy) {
       console.log("Estado de copiado interno reseteado.");
       isInternalCopy = false;
     }
   };
 
-  // Eliminamos el listener 'mouse:down' que causaba el problema
   canvas.on({
     'selection:created': resetInternalCopyFlag,
-    'selection:updated': resetInternalCopyFlag, // Añadido para más robustez
+    'selection:updated': resetInternalCopyFlag,
     'selection:cleared': resetInternalCopyFlag
   });
-  // ------------------------------------------------
 
-  // Listener de teclado
+  // ===================================================================
+  // Listener de teclado REFACTORIZADO Y CORREGIDO PARA ELECTRON
+  // ===================================================================
   document.addEventListener('keydown', (e) => {
-    const activeElement = document.activeElement.tagName;
-    if (['INPUT', 'TEXTAREA'].includes(activeElement)) {
-      if (!(e.ctrlKey && (e.key === 'z' || e.key === 'y'))) { return; }
-    }
-    if (canvas.getActiveObject() && canvas.getActiveObject().isEditing && !(e.ctrlKey && e.key === 's')) {
+    const activeObject = canvas.getActiveObject();
+    const isEditingOnCanvas = activeObject && activeObject.isEditing;
+    const isEditingInHTML = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+
+    // --- CONTEXTO 1: El usuario está escribiendo texto ---
+    if (isEditingOnCanvas || isEditingInHTML) {
+      // En modo edición, solo nos interesan ciertos atajos con Ctrl.
+      // El resto de teclas (letras, números, espacio, etc.) deben ignorarse aquí
+      // para que funcionen de forma nativa en el textarea.
+      if (e.ctrlKey) {
+        switch (e.key.toLowerCase()) {
+          case 'z':
+            e.preventDefault();
+            if(!isEditingInHTML) fns.undo(); // Deshacer solo funciona en el canvas
+            break;
+          case 'y':
+            e.preventDefault();
+            if(!isEditingInHTML) fns.redo(); // Rehacer solo funciona en el canvas
+            break;
+          case 's':
+            e.preventDefault();
+            fns.saveTemplate(); // Permitimos guardar
+            break;
+          // Dejamos que Ctrl+C y Ctrl+V sean manejados por el sistema operativo
+          // para que el copiado/pegado de texto funcione de forma nativa.
+        }
+      }
+      // IMPORTANTE: Si no es una de las combinaciones de arriba, salimos de la función
+      // y permitimos que el navegador/Electron procese la tecla de forma normal.
       return;
     }
 
+    // --- CONTEXTO 2: El usuario NO está escribiendo texto (modo global) ---
+    // Si no estamos editando, podemos capturar los atajos de forma segura.
     if (e.ctrlKey) {
-      e.preventDefault();
+      e.preventDefault(); // Prevenimos acciones por defecto del navegador (como guardar página con Ctrl+S)
       switch (e.key.toLowerCase()) {
         case 'z': fns.undo(); break;
         case 'y': fns.redo(); break;
@@ -123,11 +151,11 @@ function inicializarAtajos(canvas, fns) {
     }
   });
 
+
   // Listener para salir de la página
   window.addEventListener('beforeunload', (event) => {
-    // === AUTOGUARDADO DE SESIÓN ANTES DE SALIR ===
+    // ... (El contenido de esta función no cambia)
     try {
-      // Guardar el estado completo en una sola clave, aunque estén vacíos
       const canvasData = (window.canvas && typeof window.canvas.toJSON === 'function') ? window.canvas.toJSON() : null;
       const dataRowsData = (typeof window.dataRows !== 'undefined') ? window.dataRows : null;
       const qrColumnValue = document.getElementById('qr-column-select') ? document.getElementById('qr-column-select').value : null;
@@ -144,7 +172,6 @@ function inicializarAtajos(canvas, fns) {
       console.error('[AutoSave] Error al guardar sesión:', e);
     }
 
-    // Solo bloquea si hay cambios Y no se ha dado permiso explícito
     if (historyIndex !== savedHistoryIndex && !window.canLeavePage) {
       event.preventDefault();
       event.returnValue = 'Hay cambios sin guardar. ¿Estás seguro de que quieres salir?';
