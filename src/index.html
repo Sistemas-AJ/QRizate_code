@@ -1,269 +1,194 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <script type="text/javascript" src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Generador de QR</title>
-    <link rel="stylesheet" href="./css/index.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-    <style>
-        .excel-upload-wrapper {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 24px;
-            box-shadow: 0 2px 12px rgba(0, 59, 103, 0.1);
-            border: 2px solid #003B67;
-        }
+    <link rel="stylesheet" href="./css/index.css" />
+  </head>
+  <body>
+    <div id="notification-area"></div>
 
-        .excel-upload-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .excel-upload-icon {
-            font-size: 24px;
-        }
-
-        .excel-upload-label {
-            font-size: 16px;
-            font-weight: 600;
-            color: #003B67;
-        }
-
-        .excel-upload-container {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .excel-upload-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 24px;
-            background: #003B67;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .excel-upload-btn:hover {
-            background: #FF6B00;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(255, 107, 0, 0.2);
-        }
-
-        .upload-icon {
-            font-size: 18px;
-        }
-
-        .excel-filename-container {
-            flex: 1;
-            padding: 12px 16px;
-            background: #f8fafc;
-            border-radius: 8px;
-            border: 2px solid #edf2f7;
-            color: #64748b;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        .has-file .excel-filename-container {
-            border-color: #003B67;
-            color: #003B67;
-            background: #f0f7ff;
-        }
-
-        #excel-upload {
-            display: none;
-        }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="./js/Code.js"></script>
-</head>
-<body>
     <div class="app-bar">
-        <span class="app-bar__title">Generador de QR</span>
-        <div style="flex-grow: 1;"></div>
-        <button class="app-bar-btn" onclick="window.location.href='imprimir-qr.html'">Ver QR</button>
-        <button class="app-bar-btn" onclick="window.location.href='ver-datos.html'">Ver Datos</button>
+      <span class="app-bar__title">Generador de QR</span>
+      <div style="flex-grow: 1"></div>
+      <button class="app-bar-btn" id="ver-qr-btn">Ver QR</button>
+      <button class="app-bar-btn" id="ver-datos-btn">Ver Datos</button>
     </div>
 
     <div class="main-container">
-        <div class="config-red" style="margin-bottom:20px;">
-            <label>IP manual: <input type="text" id="manual_ip" placeholder="Ej: 192.168.1.100" style="width:150px;"></label>
-            <label style="margin-left:10px;">Puerto manual: <input type="number" id="manual_port" placeholder="Ej: 543" style="width:80px;"></label>
-            <div id="ip-port-actual" style="font-size:13px;color:rgb(255, 107, 0);margin-top:6px;"></div>
-    <script>
-    // Guardar IP y puerto en localStorage al cambiar y mostrar IP:PUERTO actual
-    function mostrarIpPortActual() {
-        let ip = localStorage.getItem('qr_app_ip') || document.getElementById('manual_ip').value || 'localhost';
-        let port = localStorage.getItem('qr_app_port') || document.getElementById('manual_port').value || '543';
-        ip = ip.trim() || 'localhost';
-        port = port.toString().trim() || '543';
-        document.getElementById('ip-port-actual').textContent = `Conectando a: ${ip}:${port}`;
-    }
-    document.addEventListener('DOMContentLoaded', function() {
-        const ipInput = document.getElementById('manual_ip');
-        const portInput = document.getElementById('manual_port');
-        if (localStorage.getItem('qr_app_ip')) ipInput.value = localStorage.getItem('qr_app_ip');
-        if (localStorage.getItem('qr_app_port')) portInput.value = localStorage.getItem('qr_app_port');
-        ipInput.addEventListener('input', function() {
-            localStorage.setItem('qr_app_ip', ipInput.value);
-            mostrarIpPortActual();
-        });
-        portInput.addEventListener('input', function() {
-            localStorage.setItem('qr_app_port', portInput.value);
-            mostrarIpPortActual();
-        });
-        mostrarIpPortActual();
-    });
-    </script>
-            <span style="font-size:12px;color:#888;margin-left:10px;">(Si se completan, se usan estos valores en vez de los automáticos)</span>
-        </div>
-        <div class="qr-flex">
-            <form class="qrform" onsubmit="generateQR(); return false;"> 
-                <div class="excel-upload-wrapper">
-                    <div class="excel-upload-header">
-                        <span class="excel-upload-icon">📄</span>
-                        <span class="excel-upload-label">Cargar archivo Excel (.xlsx)</span>
-                    </div>
-                    <div class="excel-upload-container">
-                        <label for="excel-upload" class="excel-upload-btn">
-                            <span>Seleccionar archivo</span>
-                        </label>
-                        <div class="excel-filename-container">
-                            <span id="excel-upload-filename">Sin archivos seleccionados</span>
-                        </div>
-                        <input type="file" id="excel-upload" accept=".xlsx,.xls">
-                    </div>
-                </div>
-                <div class="qrform-grid">
-                    <div><label for="central_de_costos">N° de Central de Costos<br><input type="number" id="central_de_costos" class="qrform-input"></label></div>
-                    <div><label for="nombre_central_costos">Nombre Central de Costos<br><input type="text" id="nombre_central_costos" class="qrform-input"></label></div>
-                    <div><label for="area">N° de Área <span style=color:#FF6B00>*</span><br><input type="number" id="area" required class="qrform-input"></label></div>
-                    <div><label for="nombre_area">Nombre del Área<br><input type="text" id="nombre_area" class="qrform-input"></label></div>
-                    <div><label for="correlativo">N° de Correlativo <span style=color:#FF6B00>*</span><br><input type="number" id="correlativo" required class="qrform-input"></label></div>
-                    <div><label for="cuenta_contable">Cuenta Contable<br><input type="number" id="cuenta_contable" class="qrform-input"></label></div>
-                    <div><label for="estado">Estado<br><input type="text" id="estado" class="qrform-input"></label></div>
-                    <div><label for="descripcion">Descripción<br><input type="text" id="descripcion" class="qrform-input"></label></div>
-                    <div><label for="marca">Marca<br><input type="text" id="marca" class="qrform-input"></label></div>
-                    <div><label for="modelo">Modelo<br><input type="text" id="modelo" class="qrform-input"></label></div>
-                    <div><label for="numero_serie">Número de Serie<br><input type="text" id="numero_serie" class="qrform-input"></label></div>
-                    <div><label for="sede">N° de Sede <span style=color:#FF6B00>*</span><br><input type="number" id="sede" required class="qrform-input"></label></div>
-                    <div><label for="categoria">Categoria<br><input type="text" id="categoria" class="qrform-input"></label></div>
-                    <div class="qrform-btns"><button type="submit" class="qrform-submit">Generar QR</button></div>
-                </div>
-            </form>
-            <div id="qrcode"></div>
-        </div>
-    </div>
-</body>
-<script>
-// Procesar archivo Excel y enviar a la API
-// Mejorar UX: mostrar nombre de archivo seleccionado y animación
-const excelInput = document.getElementById('excel-upload');
-const excelFilename = document.getElementById('excel-upload-filename');
-const uploadContainer = document.querySelector('.excel-upload-container');
+      <div class="config-red">
+        <label
+          >IP manual:
+          <input type="text" id="manual_ip" placeholder="Ej: 192.168.1.100" />
+        </label>
+        <label
+          >Puerto manual:
+          <input type="number" id="manual_port" placeholder="Ej: 8000" />
+        </label>
+        <div id="ip-port-actual">Conectando...</div>
+        <span
+          >(Si se completan, se usan estos valores en vez de los
+          automáticos)</span
+        >
+      </div>
 
-excelInput.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        excelFilename.textContent = file.name;
-        uploadContainer.classList.add('has-file');
-    } else {
-        excelFilename.textContent = 'Sin archivos seleccionados';
-        uploadContainer.classList.remove('has-file');
-    }
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-        const data = new Uint8Array(evt.target.result);
-        const workbook = XLSX.read(data, {type: 'array'});
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(sheet, {defval: ''});
-        if (!rows.length) {
-            alert('El archivo está vacío o no tiene datos.');
-            return;
-        }
-        // Mapeo de nombres de columnas del Excel a los nombres esperados por el backend
-        const fieldMap = {
-            'ID': 'id',
-            'CATEGORIA ': 'categoria',
-            'CATEGORIA': 'categoria',
-            'CENTRAL DE COSTOS': 'central_de_costos',
-            'Nombre de centrsl de costos': 'nombre_central_costos',
-            'Nombre de central de costos': 'nombre_central_costos',
-            'AREA ': 'area',
-            'AREA': 'area',
-            'Nombre del area': 'nombre_area',
-            'Nombre del área': 'nombre_area',
-            'CORRELATIVO': 'correlativo',
-            'CUENTA CONTABLE ': 'cuenta_contable',
-            'CUENTA CONTABLE': 'cuenta_contable',
-            'ESTADO': 'estado',
-            'DESCRIPCIÓN': 'descripcion',
-            'DESCRIPCION': 'descripcion',
-            'MARCA': 'marca',
-            'MODELO': 'modelo',
-            'SERIE': 'numero_serie',
-            'NÚMERO DE SERIE': 'numero_serie',
-            'NUMERO DE SERIE': 'numero_serie',
-            'CODIGO': 'codigo',
-            'CÓDIGO': 'codigo',
-            'SEDE': 'sede',
-            'URL': 'url',
-            'Número Central de Costo': 'numero_central_costo',
-            'NUMERO CENTRAL DE COSTO': 'numero_central_costo',
-        };
-        const mappedRows = rows.map(row => {
-            const mapped = {};
-            for (const key in row) {
-                const cleanKey = key.trim();
-                if (fieldMap[cleanKey]) {
-                    mapped[fieldMap[cleanKey]] = row[key];
-                }
-            }
-            return mapped;
-        });
-        // Validar que cada fila tenga los campos requeridos
-        const validRows = mappedRows.filter(row => row.correlativo && row.central_de_costos && row.area);
-        if (validRows.length === 0) {
-            alert('El archivo no contiene filas válidas con correlativo, central_de_costos y area.');
-            return;
-        }
-        console.log('Datos enviados a bulk-create:', validRows);
-        // Obtener IP y puerto manuales o usar por defecto localhost:${ip}
-        let ip = localStorage.getItem('qr_app_ip') || document.getElementById('manual_ip').value || 'localhost';
-        let port = localStorage.getItem('qr_app_port') || document.getElementById('manual_port').value || '543';
-        ip = ip.trim() || 'localhost';
-        port = port.toString().trim() || '8000';
-        fetch(`http://${ip}:${port}/activos/bulk-create`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(validRows)
-        })
-        .then(res => res.ok ? res.json() : res.text().then(t => {throw new Error(t)}))
-        .then(resp => {
-            alert('Datos cargados correctamente a la base de datos.');
-        })
-        .catch(err => {
-            alert('Error al cargar los datos: ' + err.message);
-        });
-    };
-    reader.readAsArrayBuffer(file);
-});
-</script>
+      <div class="qr-flex">
+        <form class="qrform" id="qr-form">
+          <div class="excel-upload-wrapper">
+            <div class="excel-upload-header">
+              <span class="excel-upload-icon">📄</span>
+              <span class="excel-upload-label"
+                >Cargar archivo Excel (.xlsx)</span
+              >
+            </div>
+            <div class="excel-upload-container">
+              <label for="excel-upload" class="excel-upload-btn">
+                <span>Seleccionar archivo</span>
+              </label>
+              <div class="excel-filename-container">
+                <span id="excel-upload-filename"
+                  >Sin archivos seleccionados</span
+                >
+              </div>
+              <input type="file" id="excel-upload" accept=".xlsx,.xls" />
+            </div>
+          </div>
+
+          <div class="qrform-grid">
+            <div>
+              <label for="central_de_costos"
+                >N° de Central de Costos<br /><input
+                  type="number"
+                  id="central_de_costos"
+                  name="central_de_costos"
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="nombre_central_costos"
+                >Nombre Central de Costos<br /><input
+                  type="text"
+                  id="nombre_central_costos"
+                  name="nombre_central_costos"
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="area"
+                >N° de Área <span style="color: #ff6b00">*</span><br /><input
+                  type="number"
+                  id="area"
+                  name="area"
+                  required
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="nombre_area"
+                >Nombre del Área<br /><input
+                  type="text"
+                  id="nombre_area"
+                  name="nombre_area"
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="correlativo"
+                >N° de Correlativo <span style="color: #ff6b00">*</span
+                ><br /><input
+                  type="number"
+                  id="correlativo"
+                  name="correlativo"
+                  required
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="cuenta_contable"
+                >Cuenta Contable<br /><input
+                  type="number"
+                  id="cuenta_contable"
+                  name="cuenta_contable"
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="estado"
+                >Estado<br /><input
+                  type="text"
+                  id="estado"
+                  name="estado"
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="descripcion"
+                >Descripción<br /><input
+                  type="text"
+                  id="descripcion"
+                  name="descripcion"
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="marca"
+                >Marca<br /><input
+                  type="text"
+                  id="marca"
+                  name="marca"
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="modelo"
+                >Modelo<br /><input
+                  type="text"
+                  id="modelo"
+                  name="modelo"
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="numero_serie"
+                >Número de Serie<br /><input
+                  type="text"
+                  id="numero_serie"
+                  name="numero_serie"
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="sede"
+                >N° de Sede <span style="color: #ff6b00">*</span><br /><input
+                  type="number"
+                  id="sede"
+                  name="sede"
+                  required
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div>
+              <label for="categoria"
+                >Categoria<br /><input
+                  type="text"
+                  id="categoria"
+                  name="categoria"
+                  class="qrform-input"
+              /></label>
+            </div>
+            <div class="qrform-btns">
+              <button type="submit" class="qrform-submit">Generar QR</button>
+            </div>
+          </div>
+        </form>
+
+        <div id="qrcode"></div>
+      </div>
+    </div>
+
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+    <script defer src="./js/renderer.js"></script>
+  </body>
 </html>

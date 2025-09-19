@@ -25,7 +25,9 @@
     ],
     "win": {
       "icon": "assets/icon.ico",
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -37,5 +39,9 @@
   "devDependencies": {
     "electron": "^37.2.5",
     "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "bonjour": "^3.5.0",
+    "portfinder": "^1.0.38"
   }
 }

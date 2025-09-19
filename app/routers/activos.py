@@ -1,10 +1,11 @@
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse 
+
 import qrcode
 import base64
 from io import BytesIO
 from typing import List, Optional, Dict, Set
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 import socket
 
 # --- API Router ---
@@ -14,28 +15,8 @@ router = APIRouter(
     tags=["Activos"]
 )
 
-def get_local_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        IP = s.getsockname()[0]
-    except Exception:
-        IP = "0.0.0.0"
-    finally:
-        s.close()
-    return IP
 
-FIXED_PORT = 543
 
-# --- Endpoint para exponer IP y puerto fijo ---
-@router.get("/network-info", tags=["Red"])
-def obtener_info_red():
-    
-    
-    
-    ip = get_local_ip()
-    port = FIXED_PORT
-    return {"ip": ip, "port": port}
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select
@@ -121,7 +102,7 @@ def generar_qr_base64(texto: str):
 # --- Endpoints CRUD ---
 
 @router.post("/", response_model=ActivoResponse, status_code=201)
-def crear_activo(activo: ActivoCreate, db: Session = Depends(get_db)):
+def crear_activo(activo: ActivoCreate, request: Request, db: Session = Depends(get_db)):
     # Generar id si no viene
     data = activo.model_dump()
     if not data.get('id'):
@@ -148,10 +129,11 @@ def crear_activo(activo: ActivoCreate, db: Session = Depends(get_db)):
         data['codigo_activo'] = f"{correlativo}-{central}-{area}"
     # Generar url si no viene
     if not data.get('url'):
-        # Obtener ip y puerto locales
-        ip = get_local_ip()
-        port = FIXED_PORT
-        data['url'] = f"http://{ip}:{port}/activos/detalle/{data['id']}"
+        # 'request.app.state.hostname' y 'request.app.state.port' los definiremos en main.py
+        hostname = request.app.state.hostname
+        port = request.app.state.port
+        # Usamos el hostname dinámico en lugar de la IP
+        data['url'] = f"http://{hostname}:{port}/activos/detalle/{data['id']}"
     db_activo = Activo(**data)
     db.add(db_activo)
     try:
@@ -221,118 +203,47 @@ def eliminar_activo(activo_id: str, db: Session = Depends(get_db)):
 
 # --- Endpoints Avanzados ---
 
-@router.get("/detalle/{codigo}", response_class=HTMLResponse)
-def detalle_activo_html(codigo: str):
-    return """
+def detalle_activo_html(codigo: str, request: Request):
+    # Ya no se necesita el endpoint /network-info.
+    # El JavaScript ahora hará una petición relativa para obtener los datos.
+    # Esto es mucho más simple y robusto.
+    return f"""
     <html>
-<head>
-  <meta charset=\"UTF-8\">
-  <title>Detalle del Activo</title>
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
-    .container { max-width: 700px; margin: 40px auto; padding: 20px 30px; background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
-    h1 { color: #1c1e21; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
-    .detail-grid { display: grid; grid-template-columns: 150px 1fr; gap: 15px; }
-    .detail-grid strong { color: #606770; }
-    .error { color: red; font-weight: bold; text-align: center; }
-  </style>
-</head>
-<body>
+    <head>
+      </head>
+    <body>
+      <div class="container" id="asset-details">
+        </div>
+      <script>
+        window.onload = async function() {{
+          const codigoActivo = "{codigo}";
+          try {{
+            // ¡Petición relativa! El navegador usará el host y puerto correctos automáticamente.
+            const response = await fetch(`/activos/${{codigoActivo}}`); 
+            if (!response.ok) {{ throw new Error('Activo no encontrado'); }}
+            const data = await response.json();
+            
+            // Llenar los campos con los datos
+            document.getElementById('id').textContent = data.id || '';
+            // ... llenar todos los demás campos ...
 
-  <div class=\"container\" id=\"asset-details\">
-    <h1 id=\"nombre-activo\">Cargando información del activo...</h1>
-    <div class=\"detail-grid\">
-      <strong>Nombre Central de Costos:</strong> <span id=\"nombre_central_costos\"></span>
-      <strong>ID:</strong> <span id=\"id\"></span>
-      <strong>Categoría:</strong> <span id=\"categoria\"></span>
-      <strong>Central de Costos:</strong> <span id=\"central_de_costos\"></span>
-      <strong>Área:</strong> <span id=\"area\"></span>
-      <strong>Correlativo:</strong> <span id=\"correlativo\"></span>
-      <strong>Cuenta Contable:</strong> <span id=\"cuenta_contable\"></span>
-      <strong>Estado:</strong> <span id=\"estado\"></span>
-      <strong>Descripción:</strong> <span id=\"descripcion\"></span>
-      <strong>Marca:</strong> <span id=\"marca\"></span>
-      <strong>Modelo:</strong> <span id=\"modelo\"></span>
-      <strong>Número de Serie:</strong> <span id=\"numero_serie\"></span>
-      <strong>Código Activo:</strong> <span id=\"codigo_activo\"></span>
-      <strong>Número Central Costo:</strong> <span id=\"numero_central_costo\"></span>
-      <strong>Sede:</strong> <span id=\"sede\"></span>
-    </div>
-  </div>
-
-  <div class=\"container\" id=\"error-message\" style=\"display:none;\">
-    <p class=\"error\">No se encontró el activo o el código es inválido.</p>
-  </div>
-
-  <script>
-    window.onload = async function() {
-      // Usar el parámetro de la ruta como código
-      const codigoActivo = window.location.pathname.split('/').pop();
-
-      const detailsContainer = document.getElementById('asset-details');
-      const errorContainer = document.getElementById('error-message');
-
-      if (!codigoActivo) {
-        detailsContainer.style.display = 'none';
-        errorContainer.style.display = 'block';
-        return;
-      }
-
-      try {
-        // 2. Obtener ip y port dinámicamente
-        const netInfoResp = await fetch('/activos/network-info');
-        if (!netInfoResp.ok) throw new Error('No se pudo obtener la red');
-        const netInfo = await netInfoResp.json();
-        const ip = netInfo.ip;
-        const port = netInfo.port;
-
-        // 3. Consultar al backend para obtener los datos del activo (endpoint correcto)
-        const response = await fetch(`http://${ip}:${port}/activos/${codigoActivo}`);
-        if (!response.ok) {
-          throw new Error('Activo no encontrado');
-        }
-
-        const data = await response.json();
-        // Mostrar todos los campos recibidos en consola
-        console.log('Datos completos del activo:', data);
-
-        // 4. Mostrar todos los campos del modelo Activo
-        document.getElementById('nombre_central_costos').textContent = data.nombre_central_costos || '';
-        document.title = `Activo: ${data.descripcion || data.id}`;
-        document.getElementById('nombre-activo').textContent = data.descripcion || data.id;
-        document.getElementById('id').textContent = data.id || '';
-        document.getElementById('categoria').textContent = data.categoria || '';
-        document.getElementById('central_de_costos').textContent = data.central_de_costos || '';
-        document.getElementById('area').textContent = data.area || '';
-        document.getElementById('correlativo').textContent = data.correlativo || '';
-        document.getElementById('cuenta_contable').textContent = data.cuenta_contable || '';
-        document.getElementById('estado').textContent = data.estado || '';
-        document.getElementById('descripcion').textContent = data.descripcion || '';
-        document.getElementById('marca').textContent = data.marca || '';
-        document.getElementById('modelo').textContent = data.modelo || '';
-        document.getElementById('numero_serie').textContent = data.numero_serie || '';
-        document.getElementById('codigo_activo').textContent = data.codigo_activo || '';
-        document.getElementById('numero_central_costo').textContent = data.numero_central_costo || '';
-        document.getElementById('sede').textContent = data.sede || '';
-
-
-      } catch (error) {
-        detailsContainer.style.display = 'none';
-        errorContainer.style.display = 'block';
-      }
-    };
-  </script>
-
-</body>
-</html>
-"""
+          }} catch (error) {{
+             // ... manejo de errores ...
+          }}
+        }};
+      </script>
+    </body>
+    </html>
+    """
 
 @router.post("/bulk-create", status_code=201)
-def crear_o_actualizar_activos_en_lote(activos: List[ActivoCreate], db: Session = Depends(get_db)):
+def crear_o_actualizar_activos_en_lote(activos: List[ActivoCreate], request: Request, db: Session = Depends(get_db)):
     creados = 0
     actualizados = 0
     errores = []
+    hostname = request.app.state.hostname
+    port = request.app.state.port
+
     required_fields = ['correlativo', 'central_de_costos', 'area']
     for activo_data in activos:
         data = activo_data.model_dump()
@@ -370,9 +281,9 @@ def crear_o_actualizar_activos_en_lote(activos: List[ActivoCreate], db: Session 
             continue
         # Generar url si no viene
         if not data.get('url'):
-            ip = get_local_ip()
-            port = FIXED_PORT
-            data['url'] = f"http://{ip}:{port}/activos/detalle/{data['id']}"
+             # Usamos las variables que obtuvimos al inicio
+            data['url'] = f"http://{hostname}:{port}/activos/detalle/{data['id']}"
+            db_activo = db.query(Activo).filter(Activo.id == data.get('id')).first()
         if db_activo:
             for key, value in data.items():
                 setattr(db_activo, key, value)

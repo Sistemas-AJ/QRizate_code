@@ -533,3 +533,82 @@ form#qrform button[type="submit"]:active {
   top: 12px;
   left: 12px;
 }
+
+
+.excel-upload-wrapper {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(0, 59, 103, 0.1);
+    border: 2px solid #003B67;
+}
+
+.excel-upload-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.excel-upload-icon {
+    font-size: 24px;
+}
+
+.excel-upload-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #003B67;
+}
+
+.excel-upload-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+}
+
+.excel-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #003B67;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.excel-upload-btn:hover {
+    background: #FF6B00;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 0, 0.2);
+}
+
+.upload-icon {
+    font-size: 18px;
+}
+
+.excel-filename-container {
+    flex: 1;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 2px solid #edf2f7;
+    color: #64748b;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.has-file .excel-filename-container {
+    border-color: #003B67;
+    color: #003B67;
+    background: #f0f7ff;
+}
+
+#excel-upload {
+    display: none;
+}
