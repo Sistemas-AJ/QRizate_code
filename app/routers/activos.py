@@ -6,6 +6,7 @@ from io import BytesIO
 from typing import List, Optional, Dict, Set
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
 import socket
 
 # --- API Router ---
@@ -101,6 +102,9 @@ def generar_qr_base64(texto: str):
 
 # --- Endpoints CRUD ---
 
+
+
+
 @router.post("/", response_model=ActivoResponse, status_code=201)
 def crear_activo(activo: ActivoCreate, request: Request, db: Session = Depends(get_db)):
     data = activo.model_dump()
@@ -113,19 +117,17 @@ def crear_activo(activo: ActivoCreate, request: Request, db: Session = Depends(g
     if not data.get('codigo_activo'):
         data['codigo_activo'] = f"{correlativo}-{area}-{sede}"
     if not data.get('url'):
-        public_url_base = request.app.state.public_url_base
-        data['url'] = f"{public_url_base}?id={data['id']}"
+        public_url_base = request.app.state.PUBLIC_URL_BASE  # <-- corregido el nombre
+        sede_id_global = request.app.state.SEDE_ID
+        # La URL ahora incluye la sede y el id completo
+        data['url'] = f"{public_url_base}?sede={sede_id_global}&id={data['id']}"
     # Verificar si ya existe un activo con el mismo correlativo
     db_activo = db.query(Activo).filter(Activo.correlativo == correlativo).first()
     if db_activo:
-        # Devuelve advertencia, no actualiza
         raise HTTPException(
             status_code=409,
             detail="Ya existe un activo con este correlativo. ¿Desea actualizar los datos?"
         )
-    
-    
-    # Crear nuevo activo
     db_activo = Activo(**data)
     db.add(db_activo)
     db.commit()
@@ -231,20 +233,18 @@ def crear_o_actualizar_activos_en_lote(activos: List[ActivoCreate], request: Req
     errores = []
     for activo_data in activos:
         data = activo_data.model_dump()
+        correlativo = data.get('correlativo', '')
+        area = data.get('area', '')
+        sede = data.get('sede', '')
         # Generar id SOLO con correlativo, área y sede
         if not data.get('id'):
-            correlativo = data.get('correlativo', '')
-            area = data.get('area', '')
-            sede = data.get('sede', '')
             data['id'] = f"{correlativo}{area}{sede}"
         if not data.get('codigo_activo'):
-            correlativo = data.get('correlativo', '')
-            area = data.get('area', '')
-            sede = data.get('sede', '')
             data['codigo_activo'] = f"{correlativo}-{area}-{sede}"
         if not data.get('url'):
-            public_url_base = request.app.state.public_url_base
-            data['url'] = f"{public_url_base}?id={data['id']}"
+            public_url_base = request.app.state.PUBLIC_URL_BASE  # <-- corregido el nombre
+            sede_id_global = request.app.state.SEDE_ID
+            data['url'] = f"{public_url_base}?sede={sede_id_global}&id={data['id']}"
         db_activo = db.query(Activo).filter(Activo.id == data['id']).first()
         if db_activo:
             for key, value in data.items():

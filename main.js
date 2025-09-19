@@ -40,7 +40,7 @@ async function startBackend() {
     const port = await portfinder.getPortPromise({ port: 8000 });
     backendPort = port;
     console.log(`Puerto libre encontrado para el backend: ${port}`);
-    const PUBLIC_URL_BASE = 'https://qrizate.systempiura.com/asset.html';
+    const PUBLIC_URL_BASE = 'http://qrizate.systempiura.com/asset.html';
     // --- SIMPLIFICADO ---
     // Ya no necesitamos ni definimos un 'hostname' mDNS.
     const scriptPath = app.isPackaged

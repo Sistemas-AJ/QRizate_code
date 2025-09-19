@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <title>Generador de QR</title>
     <link rel="stylesheet" href="./css/index.css" />
+    <link rel="stylesheet" href="./css/qr-modal.css" />
   </head>
   <body>
     <div id="notification-area"></div>
@@ -11,6 +12,9 @@
     <div class="app-bar">
       <span class="app-bar__title">Generador de QR</span>
       <div style="flex-grow: 1"></div>
+      <button class="app-bar-btn" id="show-pairing-modal-btn">
+        📱 Conectar Celular
+      </button>
       <button class="app-bar-btn" id="ver-qr-btn">Ver QR</button>
       <button class="app-bar-btn" id="ver-datos-btn">Ver Datos</button>
     </div>
@@ -212,6 +216,35 @@
           <button id="custom-confirm-yes">Sí, actualizar</button>
           <button id="custom-confirm-no">No</button>
         </div>
+      </div>
+    </div>
+
+    <div id="pairing-modal" class="modal-overlay">
+      <div class="modal-content">
+        <h2>Conexión Móvil</h2>
+        <p>
+          Escanee este código con la cámara de su celular para emparejar el
+          dispositivo con esta aplicación.
+        </p>
+        <div
+          id="pairing-qr-container"
+          style="
+            margin: 20px auto;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          "
+        ></div>
+        <div id="pairing-url-display" class="url-display"></div>
+        <button
+          id="close-modal-btn"
+          class="close-btn"
+          style="position: absolute; top: 20px; right: 20px"
+        >
+          ×
+        </button>
       </div>
     </div>
 

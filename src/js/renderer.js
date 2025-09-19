@@ -1,5 +1,5 @@
 // Define aquí la URL pública y fija a la que apuntarán los QR de tus activos.
-const ASSET_PAGE_URL = 'https://qrizate.systempiura.com/asset.html&id=23784344';
+const PAIRING_PAGE_URL = 'https://qrizate.systempiura.com/pair.html';
 
 // Estado centralizado de la aplicación
 const AppState = {
@@ -51,7 +51,29 @@ function init() {
         qrForm.removeEventListener('submit', handleQrFormSubmit); // Evita duplicados
         qrForm.addEventListener('submit', handleQrFormSubmit);
     }
+    const showModalBtn = document.getElementById('show-pairing-modal-btn');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const modalOverlay = document.getElementById('pairing-modal');
+
+    // Al hacer clic en "Conectar Celular", mostramos el modal
+    showModalBtn.addEventListener('click', () => {
+        modalOverlay.style.display = 'flex';
+        generatePairingQr();
+    });
+
+    // Al hacer clic en la 'X', ocultamos el modal
+    closeModalBtn.addEventListener('click', () => {
+        modalOverlay.style.display = 'none';
+    });
+
+    // También podemos cerrar el modal si se hace clic en el fondo oscuro
+    modalOverlay.addEventListener('click', (event) => {
+        if (event.target === modalOverlay) {
+            modalOverlay.style.display = 'none';
+        }
+    });
     console.log("✅ Aplicación inicializada.");
+
 }
 
 
@@ -180,25 +202,45 @@ function renderQr(urlParaElQr, container, codigo) {
 
 // --- LÓGICA DE EMPAREJAMIENTO ---
 function generatePairingQr() {
-    // Solo generamos el QR si ya tenemos tanto la IP como el Puerto
+    // 1. Verificamos que tengamos la IP y el Puerto recibidos de Electron
     if (AppState.localIp && AppState.apiPort) {
-        const pairingUrl = `http://${AppState.localIp}:${AppState.apiPort}/pair.html`;
         
+        // --- LÓGICA DE URL CORRECTA (LO NUEVO) ---
+        const PAIRING_PAGE_URL = 'https://qrizate.systempiura.com/pair.html';
+        
+        // a. Creamos la URL del servidor local que queremos guardar en el celular.
+        const serverInternalUrl = `http://${AppState.localIp}:${AppState.apiPort}`;
+        
+        // b. La codificamos para que viaje de forma segura en la URL.
+        const encodedUrl = encodeURIComponent(serverInternalUrl);
+        
+        // c. Creamos el contenido final para el QR: tu página pública + la dirección local como parámetro.
+        const finalQrContent = `${PAIRING_PAGE_URL}?server_url=${encodedUrl}`;
+        
+        // --- LÓGICA DE RENDERIZADO (LA TUYA) ---
         const qrContainer = document.getElementById('pairing-qr-container');
         const urlDisplay = document.getElementById('pairing-url-display');
 
-        qrContainer.innerHTML = ''; // Limpiar
-        new QRious({
-            element: qrContainer,
-            value: pairingUrl,
-            size: 150,
-        });
+        if (qrContainer && urlDisplay) {
+            qrContainer.innerHTML = ''; // Limpiar el contenedor
+            
+            // Creamos el canvas para dibujar el QR
+            const canvas = document.createElement('canvas');
+            qrContainer.appendChild(canvas);
 
-        urlDisplay.textContent = `URL de Conexión: ${pairingUrl}`;
-        console.log(`✅ QR de emparejamiento generado para: ${pairingUrl}`);
+            // Generamos el QR usando el contenido final y correcto
+            new QRious({
+                element: canvas,
+                value: finalQrContent, // <-- Usamos la URL final y correcta
+                size: 200,
+            });
+
+            // Mostramos al usuario una URL limpia y fácil de entender
+            urlDisplay.textContent = `Conexión: ${serverInternalUrl}`;
+            console.log(`✅ QR de emparejamiento generado. Contenido final: ${finalQrContent}`);
+        }
     }
 }
-
 // --- LÓGICA DE CONEXIÓN A LA API (Con Fallback Manual) ---
 function getApiBaseUrl() {
     // Prioridad 1: La URL manual del usuario

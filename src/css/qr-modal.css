@@ -1,0 +1,69 @@
+/* src/css/index.css - Añadir al final */
+
+.modal-overlay {
+    display: none; /* Oculto por defecto */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    position: relative;
+}
+
+.modal-content h2 {
+    color: #003B67;
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.modal-content p {
+    color: #334155;
+    line-height: 1.6;
+}
+
+#pairing-qr-container {
+    margin: 20px auto;
+    display: inline-block;
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.url-display {
+    font-size: 0.8rem;
+    color: #64748b;
+    word-break: break-all;
+    background: #f8fafc;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+.close-btn:hover {
+    color: #334155;
+}
