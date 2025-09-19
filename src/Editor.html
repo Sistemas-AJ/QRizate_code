@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor De QR</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link rel="stylesheet" href="css/Editor.css">
+  <link rel="icon" type="image/png" href="app_image.png">
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+        <button class="btn-inicio" onclick="window.location.href='index.html'">
+          <i class="fas fa-arrow-left"></i> Inicio
+        </button>
+        <h1 style="margin:0;">Editor De QR</h1>
+    </div>
+    <div class="controls-wrapper">
+      <div class="dropdown">
+        <button class="dropdown-toggle"><i class="fas fa-puzzle-piece"></i> Elementos</button>
+        <div class="dropdown-menu">
+          <a href="#" onclick="addText(); return false;"><i class="fas fa-font"></i> Agregar Texto</a>
+          <a href="#" onclick="addQrPlaceholder(); return false;"><i class="fas fa-qrcode"></i> Agregar QR</a>
+          <a href="#" onclick="triggerImageUpload(); return false;"><i class="fas fa-image"></i> Agregar Imagen</a>
+        </div>
+      </div>
+      <div class="dropdown">
+        <button class="dropdown-toggle"><i class="fas fa-cogs"></i> Campos Dinámicos</button>
+        <div class="dropdown-menu wide-menu">
+          <div class="control-group">
+            <label for="columns-menu">Insertar Campo Dinámico:</label>
+            <select id="columns-menu">
+              <option value="">(seleccionar)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="filename-column-select">Columna para Nombre de la Empresa:</label>
+            <select id="filename-column-select">
+              <option value="">Por defecto ('nombre')</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="qr-column-select">Columna para QR:</label>
+            <select id="qr-column-select">
+              <option value="">Por defecto ('qr')</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="dropdown">
+        <button class="dropdown-toggle"><i class="fas fa-file-export"></i> Exportar</button>
+        <div class="dropdown-menu">
+          <a href="#" onclick="generateCertificates(); return false;"><i class="fas fa-file-pdf"></i> Generar
+            Certificados (Excel)</a>
+          <a href="#" onclick="exportSinglePDF(); return false;"><i class="fas fa-file-export"></i> Exportar PDF
+            Único</a>
+          <a href="#" onclick="downloadAll(); return false;"><i class="fas fa-download"></i> Descargar Todos (ZIP)</a>
+        </div>
+      </div>
+      <div class="direct-actions">
+        <button onclick="undo()" class="btn-action-secondary" title="Deshacer (Ctrl+Z)">
+          <i class="fas fa-undo"></i>
+        </button>
+        <button onclick="redo()" class="btn-action-secondary" title="Rehacer (Ctrl+Y)">
+          <i class="fas fa-redo"></i>
+        </button>
+        <button onclick="saveTemplate()" class="btn-save" title="Guardar Plantilla">
+          <i class="fas fa-save"></i>
+        </button>
+        <button onclick="deleteSelected()" class="btn-delete" title="Eliminar (Supr)">
+          <i class="fas fa-trash"></i>
+        </button>
+        <button onclick="generatePreview()" class="btn-preview" title="Refrescar Vista Previa">
+          <i class="fas fa-eye"></i>
+        </button>
+        
+      </div>
+      <input type="file" id="input-excel" accept=".xlsx" style="display:none" onchange="loadExcel(event)">
+      <input type="file" id="template-input" accept=".json" style="display:none" onchange="loadTemplate(event)">
+      <input type="file" id="input-image" accept="image/*" style="display: none;">
+    </div>
+    <div id="progress-container">
+      <div id="progress-label"></div>
+      <progress id="progress-bar" value="0" max="100"></progress>
+      <div id="progress-percent">0%</div>
+    </div>
+    <!-- Contenedor del canvas -->
+    <div id="canvas-container">
+      <div class="canvas-half">
+        <h3>Editor</h3>
+        <canvas id="canvas" width="550" height="600" style="border: 1px solid #ccc; border-radius: 8px;"></canvas>
+      </div>
+      <div class="canvas-half">
+        <h3>Vista Previa</h3>
+        <canvas id="preview-canvas" width="550" height="600" style="border: 1px solid #ccc; border-radius: 8px;"></canvas>
+      </div>
+    </div>
+    <div id="floating-toolbar">
+      <div id="floating-toolbar-header" class="draggable-header">
+        <h3>Barra de Herramientas</h3>
+      </div>
+      <div class="toolbar-body">
+        <div id="text-controls">
+          <h4>TEXTO</h4>
+          <div class="control-group-container">
+            <div class="control-row">
+              <label for="text-align">Justificación:</label>
+              <select id="text-align">
+                <option value="left">Izquierda</option>
+                <option value="center">Centro</option>
+                <option value="right">Derecha</option>
+                <option value="justify">Justificado</option>
+              </select>
+            </div>
+            <div class="control-row">
+              <label for="text-color">Color:</label>
+              <input type="color" id="text-color" value="#000000">
+            </div>
+            <div class="control-row">
+              <label for="font-family">Fuente:</label>
+              <select id="font-family">
+                <option value="Arial">Arial</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Georgia">Georgia</option>
+              </select>
+            </div>
+            <div class="control-row">
+              <label for="font-size">Tamaño:</label>
+              <input type="number" id="font-size" value="30" min="5" max="100">
+            </div>
+          </div>
+          <div class="style-button-group">
+            <label class="style-toggle" title="Negrita">
+              <input type="checkbox" id="text-bold">
+              <i class="fas fa-bold"></i>
+            </label>
+            <label class="style-toggle" title="Cursiva">
+              <input type="checkbox" id="text-italic">
+              <i class="fas fa-italic"></i>
+            </label>
+            <button id="text-uppercase" class="style-button" title="Convertir a Mayúsculas">A</button>
+            <button id="text-lowercase" class="style-button" title="Convertir a Minúsculas">a</button>
+          </div>
+        </div>
+        <div id="layer-controls">
+          <h4>CAPAS</h4>
+          <div class="layer-button-group">
+            <button id="bring-to-front"><i class="fas fa-layer-group"></i> Traer al frente</button>
+            <button id="send-to-back"><i class="fas fa-layer-group"></i> Enviar al fondo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="js/svg2pdf.umd.min.js"></script>
+    <script src="js/qr.js"></script>
+    <script src="js/atajos.js"></script>
+    <script src="js/diseño.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof checkForAutoSave === 'function') {
+          checkForAutoSave();
+        }
+      });
+    </script>
+  </div>
+</body>
+
+</html>

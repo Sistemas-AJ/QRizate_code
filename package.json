@@ -40,9 +40,5 @@
     "electron": "^37.2.5",
     "electron-builder": "^26.0.12",
     "electron-reload": "^2.0.0-alpha.1"
-  },
-  "dependencies": {
-    "bonjour": "^3.5.0",
-    "portfinder": "^1.0.38"
   }
 }
