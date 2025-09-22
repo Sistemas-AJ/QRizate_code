@@ -1,206 +1,119 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Generador de QR</title>
-    <link rel="stylesheet" href="./css/index.css" />
-    <link rel="stylesheet" href="./css/qr-modal.css" />
-  </head>
-  <body>
-    <div id="notification-area"></div>
 
-    <div class="app-bar">
-      <span class="app-bar__title">Generador de QR</span>
+<head>
+  <meta charset="UTF-8" />
+  <title>Generador de QR</title>
+  <link rel="stylesheet" href="./css/index.css" />
+  <link rel="stylesheet" href="./css/qr-modal.css" />
+</head>
 
-      <div style="flex-grow: 1"></div>
-      <input
-        type="text"
-        id="input-sede-id"
-        placeholder="ID de Sede"
-        style="margin-left: 20px; max-width: 150px"
-      />
-      <button class="app-bar-btn" id="guardar-sede-btn">
-        Nombre de compañia
-      </button>
+<body>
+  <div id="notification-area"></div>
 
-      <button
-        class="app-bar-btn"
-        onclick="window.location.href='imprimir-qr.html'"
-      >
-        Ver QR
-      </button>
-      <button
-        class="app-bar-btn"
-        onclick="window.location.href='ver-datos.html'"
-      >
-        Ver Datos
-      </button>
-      <button class="app-bar-btn" onclick="window.location.href='Editor.html'">
-        Editor
-      </button>
+  <div class="app-bar">
+    <span class="app-bar__title">Generador de QR</span>
+
+    <div style="flex-grow: 1"></div>
+    <input type="text" id="input-sede-id" placeholder="ID de Sede" style="margin-left: 20px; max-width: 150px" />
+    <button class="app-bar-btn" id="guardar-sede-btn">
+      Nombre de compañia
+    </button>
+
+    <button class="app-bar-btn" onclick="window.location.href='imprimir-qr.html'">
+      Ver QR
+    </button>
+    <button class="app-bar-btn" onclick="window.location.href='ver-datos.html'">
+      Ver Datos
+    </button>
+    <button class="app-bar-btn" onclick="window.location.href='Editor.html'">
+      Editor
+    </button>
+  </div>
+
+  <div class="main-container">
+    <div class="qr-flex">
+      <form class="qrform" id="qr-form">
+        <div class="excel-upload-wrapper">
+          <div class="excel-upload-header">
+            <span class="excel-upload-icon"></span>
+            <span class="excel-upload-label">Cargar archivo Excel (.xlsx)</span>
+          </div>
+          <div class="excel-upload-container">
+            <label for="excel-upload" class="excel-upload-btn">
+              <span>Seleccionar archivo</span>
+            </label>
+            <div class="excel-filename-container">
+              <span id="excel-upload-filename">Sin archivos seleccionados (Asegúrese de incluir los campos
+                obligatorios)</span>
+            </div>
+            <input type="file" id="excel-upload" accept=".xlsx,.xls" />
+          </div>
+        </div>
+        <div id="bulk-qr-container"></div>
+
+        <div class="qrform-grid">
+          <div>
+            <label for="central_de_costos">N° de Central de Costos<br /><input type="number" id="central_de_costos"
+                name="central_de_costos" class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="nombre_central_costos">Nombre Central de Costos<br /><input type="text"
+                id="nombre_central_costos" name="nombre_central_costos" class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="area">N° de Área <span style="color: #ff6b00">*</span><br /><input type="number" id="area"
+                name="area" required class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="nombre_area">Nombre del Área<br /><input type="text" id="nombre_area" name="nombre_area"
+                class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="correlativo">N° de Correlativo <span style="color: #ff6b00">*</span><br /><input type="number"
+                id="correlativo" name="correlativo" required class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="cuenta_contable">Cuenta Contable<br /><input type="number" id="cuenta_contable"
+                name="cuenta_contable" class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="estado">Estado<br /><input type="text" id="estado" name="estado" class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="descripcion">Descripción<br /><input type="text" id="descripcion" name="descripcion"
+                class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="marca">Marca<br /><input type="text" id="marca" name="marca" class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="modelo">Modelo<br /><input type="text" id="modelo" name="modelo" class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="numero_serie">Número de Serie<br /><input type="text" id="numero_serie" name="numero_serie"
+                class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="sede">N° de Sede <span style="color: #ff6b00">*</span><br /><input type="number" id="sede"
+                name="sede" required class="qrform-input" /></label>
+          </div>
+          <div>
+            <label for="categoria">Categoria<br /><input type="text" id="categoria" name="categoria"
+                class="qrform-input" /></label>
+          </div>
+          <div class="qrform-btns">
+            <button type="submit" class="qrform-submit">Generar QR</button>
+          </div>
+        </div>
+        <div class="config-red">
+          <div id="ip-port-actual">Conectando...</div>
+        </div>
+      </form>
+
+      <div id="qrcode"></div>
     </div>
-
-    <div class="main-container">
-      <div class="qr-flex">
-        <form class="qrform" id="qr-form">
-          <div class="excel-upload-wrapper">
-            <div class="excel-upload-header">
-              <span class="excel-upload-icon"></span>
-              <span class="excel-upload-label"
-                >Cargar archivo Excel (.xlsx)</span
-              >
-            </div>
-            <div class="excel-upload-container">
-              <label for="excel-upload" class="excel-upload-btn">
-                <span>Seleccionar archivo</span>
-              </label>
-              <div class="excel-filename-container">
-                <span id="excel-upload-filename"
-                  >Sin archivos seleccionados (Asegúrese de incluir los campos
-                  obligatorios)</span
-                >
-              </div>
-              <input type="file" id="excel-upload" accept=".xlsx,.xls" />
-            </div>
-          </div>
-          <div id="bulk-qr-container"></div>
-
-          <div class="qrform-grid">
-            <div>
-              <label for="central_de_costos"
-                >N° de Central de Costos<br /><input
-                  type="number"
-                  id="central_de_costos"
-                  name="central_de_costos"
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="nombre_central_costos"
-                >Nombre Central de Costos<br /><input
-                  type="text"
-                  id="nombre_central_costos"
-                  name="nombre_central_costos"
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="area"
-                >N° de Área <span style="color: #ff6b00">*</span><br /><input
-                  type="number"
-                  id="area"
-                  name="area"
-                  required
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="nombre_area"
-                >Nombre del Área<br /><input
-                  type="text"
-                  id="nombre_area"
-                  name="nombre_area"
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="correlativo"
-                >N° de Correlativo <span style="color: #ff6b00">*</span
-                ><br /><input
-                  type="number"
-                  id="correlativo"
-                  name="correlativo"
-                  required
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="cuenta_contable"
-                >Cuenta Contable<br /><input
-                  type="number"
-                  id="cuenta_contable"
-                  name="cuenta_contable"
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="estado"
-                >Estado<br /><input
-                  type="text"
-                  id="estado"
-                  name="estado"
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="descripcion"
-                >Descripción<br /><input
-                  type="text"
-                  id="descripcion"
-                  name="descripcion"
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="marca"
-                >Marca<br /><input
-                  type="text"
-                  id="marca"
-                  name="marca"
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="modelo"
-                >Modelo<br /><input
-                  type="text"
-                  id="modelo"
-                  name="modelo"
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="numero_serie"
-                >Número de Serie<br /><input
-                  type="text"
-                  id="numero_serie"
-                  name="numero_serie"
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="sede"
-                >N° de Sede <span style="color: #ff6b00">*</span><br /><input
-                  type="number"
-                  id="sede"
-                  name="sede"
-                  required
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div>
-              <label for="categoria"
-                >Categoria<br /><input
-                  type="text"
-                  id="categoria"
-                  name="categoria"
-                  class="qrform-input"
-              /></label>
-            </div>
-            <div class="qrform-btns">
-              <button type="submit" class="qrform-submit">Generar QR</button>
-            </div>
-          </div>
-          <div class="config-red">
-            <div id="ip-port-actual">Conectando...</div>
-          </div>
-        </form>
-
-        <div id="qrcode"></div>
-      </div>
-      <div
-        id="custom-confirm-modal"
-        style="
+    <div id="custom-confirm-modal" style="
           display: none;
           position: fixed;
           top: 0;
@@ -211,55 +124,46 @@
           z-index: 9999;
           align-items: center;
           justify-content: center;
-        "
-      >
-        <div
-          style="
+        ">
+      <div style="
             background: #fff;
             padding: 20px;
             border-radius: 8px;
             max-width: 400px;
             margin: auto;
-          "
-        >
-          <p id="custom-confirm-message"></p>
-          <button id="custom-confirm-yes">Sí, actualizar</button>
-          <button id="custom-confirm-no">No</button>
-        </div>
+          ">
+        <p id="custom-confirm-message"></p>
+        <button id="custom-confirm-yes">Sí, actualizar</button>
+        <button id="custom-confirm-no">No</button>
       </div>
     </div>
+  </div>
 
-    <div id="pairing-modal" class="modal-overlay">
-      <div class="modal-content">
-        <h2>Conexión Móvil</h2>
-        <p>
-          Escanee este código con la cámara de su celular para emparejar el
-          dispositivo con esta aplicación.
-        </p>
-        <div
-          id="pairing-qr-container"
-          style="
+  <div id="pairing-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h2>Conexión Móvil</h2>
+      <p>
+        Escanee este código con la cámara de su celular para emparejar el
+        dispositivo con esta aplicación.
+      </p>
+      <div id="pairing-qr-container" style="
             margin: 20px auto;
             width: 200px;
             height: 200px;
             display: flex;
             align-items: center;
             justify-content: center;
-          "
-        ></div>
-        <div id="pairing-url-display" class="url-display"></div>
-        <button
-          id="close-modal-btn"
-          class="close-btn"
-          style="position: absolute; top: 20px; right: 20px"
-        >
-          ×
-        </button>
-      </div>
+          "></div>
+      <div id="pairing-url-display" class="url-display"></div>
+      <button id="close-modal-btn" class="close-btn" style="position: absolute; top: 20px; right: 20px">
+        ×
+      </button>
     </div>
+  </div>
 
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-    <script defer src="./js/renderer.js"></script>
-  </body>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script defer src="./js/renderer.js"></script>
+</body>
+
 </html>

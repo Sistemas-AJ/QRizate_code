@@ -126,7 +126,7 @@ function addText() {
 }
 
 function addQrPlaceholder() {
-  const qrPlaceholder = new fabric.Textbox('{{qr}}', {
+  const qrPlaceholder = new fabric.Textbox('{{url}}', {
     left: 150, top: 150, fontSize: 30, fill: '#007bff',
     fontFamily: 'Courier New', width: 150, textAlign: 'center',
   });
@@ -168,6 +168,14 @@ function saveTemplate() {
   a.download = "plantilla.json";
   a.click();
   URL.revokeObjectURL(url);
+  // Guardar SVG en localStorage para impresión
+  try {
+    const svgString = canvas.toSVG();
+    localStorage.setItem('editor_svg_template', svgString);
+    console.log('[Editor] Plantilla SVG guardada en localStorage');
+  } catch (e) {
+    console.error('[Editor] Error al guardar SVG en localStorage:', e);
+  }
   savedHistoryIndex = historyIndex;
 }
 
@@ -183,12 +191,33 @@ function loadExcel(event) {
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     
     // ===== CAMBIO: USA LA VARIABLE GLOBAL =====
-    window.dataRows = XLSX.utils.sheet_to_json(sheet);
-    
+    // Generar QR SVG y guardarlo en la variable QR de cada registro
+    const rows = XLSX.utils.sheet_to_json(sheet);
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+            // Generar QR SVG desde la columna 'url' (no se guarda en la base de datos)
+            const url = row.url || '';
+      if (window.QRCode && url) {
+        const tempDiv = document.createElement('div');
+        new window.QRCode(tempDiv, {
+          text: url,
+          width: 180,
+          height: 180,
+          correctLevel: window.QRCode.CorrectLevel.M,
+          render: 'svg'
+        });
+        const svgEl = tempDiv.querySelector('svg');
+        row.QR = svgEl ? svgEl.outerHTML : '';
+      } else {
+        row.QR = '';
+      }
+    }
+    window.dataRows = rows;
+
     alert('Datos de Excel cargados.');
     populateColumnSelectors();
     document.getElementById('columns-menu').disabled = false;
-    
+
     // Al cargar desde Excel, también refrescamos la vista previa
     generatePreview(); 
   };
@@ -373,7 +402,7 @@ async function generateCertificates() {
         clonedCanvas.loadFromJSON(canvas.toJSON(), () => {
           const qrPromise = processQrForCanvas(clonedCanvas, row, qrColumn);
           clonedCanvas.getObjects().forEach(obj => {
-            if ((obj.type === 'textbox' || obj.type === 'i-text') && !obj.text.includes('{{qr}}')) {
+            if ((obj.type === 'textbox' || obj.type === 'i-text') && !obj.text.includes('{{url}}')) {
               replaceTextWithStyles(obj, row);
             }
           });
@@ -410,10 +439,10 @@ async function generateCertificates() {
 
 function processQrForCanvas(canvasInstance, rowData, qrColumn) {
   return new Promise(resolve => {
-    const qrPlaceholder = canvasInstance.getObjects().find(o => o.text && o.text.includes('{{qr}}'));
+    const qrPlaceholder = canvasInstance.getObjects().find(o => o.text && o.text.includes('{{url}}'));
     if (!qrPlaceholder) return resolve();
 
-    let qrData = qrColumn ? rowData[qrColumn] : (rowData['qr'] || rowData['QR'] || rowData['Qr']);
+  let qrData = qrColumn ? rowData[qrColumn] : (rowData['url'] || rowData['URL'] || rowData['Url']);
     if (qrData) {
       QRCode.toDataURL(qrData, { width: qrPlaceholder.getScaledWidth(), margin: 1 }, (err, url) => {
         if (url) {
