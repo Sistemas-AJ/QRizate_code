@@ -135,6 +135,24 @@ function addQrPlaceholder() {
 
 function triggerImageUpload() {
   document.getElementById('input-image').click();
+  // El listener para el input-image ya está en el DOMContentLoaded, pero aseguramos que siempre convierta a base64
+  document.getElementById('input-image').onchange = function (event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      // Insertar imagen como base64 en el canvas
+      fabric.Image.fromURL(e.target.result, (img) => {
+        img.set({ left: 100, top: 100, scaleX: 0.5, scaleY: 0.5 });
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+        saveState();
+        debouncedGeneratePreview();
+      });
+    };
+    reader.readAsDataURL(file);
+  };
 }
 
 function loadTemplateFromData(jsonData) {
@@ -168,13 +186,14 @@ function saveTemplate() {
   a.download = "plantilla.json";
   a.click();
   URL.revokeObjectURL(url);
-  // Guardar SVG en localStorage para impresión
+  // Guardar JSON y SVG en localStorage para impresión
   try {
+    localStorage.setItem('editor_json_template', json);
     const svgString = canvas.toSVG();
     localStorage.setItem('editor_svg_template', svgString);
-    console.log('[Editor] Plantilla SVG guardada en localStorage');
+    console.log('[Editor] Plantilla JSON y SVG guardados en localStorage');
   } catch (e) {
-    console.error('[Editor] Error al guardar SVG en localStorage:', e);
+    console.error('[Editor] Error al guardar plantilla en localStorage:', e);
   }
   savedHistoryIndex = historyIndex;
 }

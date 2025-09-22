@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 </head>
 <body>
   <div class="main-flex">
@@ -22,7 +23,7 @@
       </div>
       <div class="panel-group">
         <label for="grid-cols">Columnas:</label>
-        <input type="number" id="grid-cols" min="1" max="5" value="5">
+        <input type="number" id="grid-cols" min="1" max="6" value="6">
       </div>
       <button onclick="aplicarGrilla()" class="btn btn-primary">Aplicar grilla</button>
       <button onclick="window.print()" class="btn btn-success">Imprimir</button>
@@ -37,7 +38,6 @@
   </div>
 
   <style>
-
   .a4-sheet {
     width: 210mm;
     min-height: 297mm;
@@ -165,35 +165,6 @@
   }
   </style>
   <script>
-
-
-// Función reutilizable para generar el SVG QR desde una URL
-function generarQrSVG(url, size = 180) {
-  let qrSvg = '';
-  // Si no está QRCode.js, cargarla y reintentar
-  if (!window.QRCode) {
-    if (!window._qrCodeLoading) {
-      window._qrCodeLoading = true;
-      var script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js';
-      script.onload = function() {
-        window._qrCodeLoading = false;
-        aplicarGrilla(); // Reintentar renderizado
-      };
-      document.head.appendChild(script);
-    }
-    return '<text x="0" y="0" fill="red">Cargando QRCode.js...</text>';
-  }
-  // Usar QRCode.js para generar SVG
-  window.QRCode.toString(url, { type: 'svg', width: size, height: size }, function(err, svg) {
-    if (!err && svg) {
-      qrSvg = svg;
-    } else {
-      qrSvg = '<text x="0" y="0" fill="red">QR</text>';
-    }
-  });
-  return qrSvg || '<text x="0" y="0" fill="red">QR</text>';
-}
     // Obtener IP y puerto de localStorage o usar valores por defecto
     let ip = localStorage.getItem('qr_app_ip') || '127.0.0.1';
     let port = localStorage.getItem('qr_app_port') || '8000';
@@ -202,20 +173,23 @@ function generarQrSVG(url, size = 180) {
 
 
 
-
-      // URL base igual que en main.js
-      const PUBLIC_URL_BASE = 'http://qrizate.systempiura.com/asset.html';
       function renderQRCard(item) {
-        // Solo retorna los datos, el QR se renderiza en la plantilla SVG
-        return item;
+        const id = item.id || item.codigo_activo || item.codigo || '';
+        const codigo = item.codigo_activo || item.codigo || item.id || '';
+        const url = `http://${ip}:${port}/activos/detalle/${id}`;
+        const qrDivId = `qrgen_${id}`;
+        // Solo el div para QRious, sin imagen del backend
+        return `<div class='qr-card'>
+          <div id='${qrDivId}' class='qr-canvas-holder' style='width:100px;height:100px;margin:0 auto 2px auto; margin-bottom: 0px;'></div>
+          <a href='${url}' target='_blank' style='color:#000000;text-decoration:none; font-size:10px;'>${codigo}</a><br>
+        </div>`;
       }
 
       // Generar todos los QRs con QRious en los divs de la grilla
-
       function generarTodosLosQRs() {
         qrRawData.forEach(item => {
           const id = item.id || item.codigo_activo || item.codigo || '';
-          const url = `${PUBLIC_URL_BASE}?id=${id}`;
+          const url = `http://${ip}:${port}/activos/detalle/${id}`;
           const qrDivId = `qrgen_${id}`;
           const qrDiv = document.getElementById(qrDivId);
           if (qrDiv) {
@@ -257,21 +231,23 @@ function generarQrSVG(url, size = 180) {
       }
 
     async function cargarQRs() {
-  try {
-    // ESTA ES LA LÍNEA CLAVE
-    const response = await fetch(`http://${ip}:${port}/activos/`);
-    if (!response.ok) throw new Error("Network response was not ok");
-    const data = await response.json();
-    // Guarda los datos recibidos en la variable qrRawData
-    qrRawData = data.filter(item => (item.id || item.codigo_activo || item.codigo) && (item.codigo_activo !== 'string' && item.codigo !== 'string'));
-    // Llama a la función que dibuja todo en pantalla
-    aplicarGrilla();
-  } catch (e) {
-    // ... maneja el error si el servidor no responde ...
-  }
+      try {
+        const response = await fetch(`http://${ip}:${port}/activos/`);
+        if (!response.ok) throw new Error("Network response was not ok");
+        const data = await response.json();
+        // Filtrar solo los que tengan id o codigo_activo válido
+        qrRawData = data.filter(item => (item.id || item.codigo_activo || item.codigo) && (item.codigo_activo !== 'string' && item.codigo !== 'string'));
+        qrItems = qrRawData.map(renderQRCard);
+        aplicarGrilla();
+      } catch (e) {
+        var data = localStorage.getItem('qr_print_items');
+        if (!data) return;
+        const parsed = JSON.parse(data);
+        qrRawData = parsed.filter(item => (item.id || item.codigo_activo || item.codigo) && (item.codigo_activo !== 'string' && item.codigo !== 'string'));
+        qrItems = qrRawData.map(renderQRCard);
+        aplicarGrilla();
+      }
     }
-
-
 
 function aplicarGrilla(filtrado = null) {
   const previewContainer = document.getElementById('preview-container');
@@ -279,12 +255,16 @@ function aplicarGrilla(filtrado = null) {
   const rows = parseInt(document.getElementById('grid-rows').value) || 2;
   const cols = parseInt(document.getElementById('grid-cols').value) || 3;
   const itemsPerPage = rows * cols;
+  // Usar los objetos de datos reales, no el HTML
   const items = filtrado || qrRawData;
   const totalItems = items.length;
   const numPages = Math.ceil(totalItems / itemsPerPage);
 
   let actualPage = 0;
   let idx = 0;
+  // Obtener plantilla JSON guardada en localStorage
+  const plantillaJSON = localStorage.getItem('editor_json_template');
+
   while (idx < totalItems) {
     const sheet = document.createElement('div');
     sheet.className = 'a4-sheet';
@@ -296,60 +276,75 @@ function aplicarGrilla(filtrado = null) {
     grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
     grid.style.gap = '0';
     let tieneQR = false;
-    // 1. Recupera la plantilla SVG desde localStorage
-    const svgTemplate = localStorage.getItem('editor_svg_template');
-    const qrColumn = 'url'; // O usa el valor seleccionado en el menú de columnas
-
-    // 2. En cada celda, reemplaza los marcadores por los datos y el QR
     for (let i = 0; i < itemsPerPage; i++) {
       const div = document.createElement('div');
       div.className = 'qr-item';
-      if (idx < totalItems && items[idx]) {
-        const item = items[idx];
-        // Renderizar la plantilla con Fabric.js y reemplazar '{{url}}' por QR visual
-        const plantillaJSON = localStorage.getItem('editor_json_template');
-        if (plantillaJSON) {
+      if (idx < totalItems && items[idx] && typeof items[idx] === 'object') {
+        // Renderizar el diseño de la plantilla en cada celda usando Fabric.js
+        if (plantillaJSON && window.fabric) {
+          let plantillaObj;
+          try {
+            plantillaObj = JSON.parse(plantillaJSON);
+            // Limpiar valores no válidos para Fabric.js (ejemplo: CanvasTextBaseline)
+            if (plantillaObj.objects) {
+              plantillaObj.objects.forEach(obj => {
+                if (obj.textBaseline && obj.textBaseline === 'alphabetical') {
+                  obj.textBaseline = 'alphabetic';
+                }
+              });
+            }
+          } catch (e) {
+            div.innerHTML = '<span style="color:red">Error en plantilla</span>';
+            grid.appendChild(div);
+            idx++;
+            continue;
+          }
           const canvasTmp = document.createElement('canvas');
           canvasTmp.width = 550;
           canvasTmp.height = 600;
           const fabricCanvas = new window.fabric.Canvas(canvasTmp, { width: 550, height: 600 });
-          fabricCanvas.loadFromJSON(JSON.parse(plantillaJSON), function() {
-            // Reemplazar textbox '{{url}}' por QR visual
+          fabricCanvas.loadFromJSON(plantillaObj, function() {
             const objs = fabricCanvas.getObjects();
             let qrPromises = [];
             for (let j = 0; j < objs.length; j++) {
-              if (objs[j].type === 'textbox' && objs[j].text === '{{url}}') {
-                // Generar QR como imagen
-                qrPromises.push(new Promise(resolve => {
-                  new window.QRious({
-                    value: item.url,
-                    size: objs[j].width || 120,
-                    background: 'white',
-                    foreground: '#000000',
-                    level: 'M',
-                    element: (() => {
-                      const c = document.createElement('canvas');
-                      setTimeout(() => {
-                        const qrImg = new window.fabric.Image(c, {
-                          left: objs[j].left,
-                          top: objs[j].top,
-                          scaleX: (objs[j].width || 120) / c.width,
-                          scaleY: (objs[j].height || 120) / c.height
-                        });
-                        fabricCanvas.remove(objs[j]);
-                        fabricCanvas.add(qrImg);
-                        resolve();
-                      }, 100);
-                      return c;
-                    })()
-                  });
-                }));
-              } else if (objs[j].type === 'textbox') {
-                // Reemplazar marcadores dinámicos en otros textbox
-                objs[j].set('text', objs[j].text.replace('{{url}}', item.url));
+              objs[j].set('visible', true); // Forzar visibilidad de todos los objetos
+              if (objs[j].type === 'textbox') {
+                if (objs[j].text && objs[j].text.trim() === '{{url}}') {
+                  qrPromises.push(new Promise(resolve => {
+                    new window.QRious({
+                      value: `http://${ip}:${port}/activos/detalle/${items[idx].id || items[idx].codigo_activo || items[idx].codigo || ''}`,
+                      size: objs[j].width || 120,
+                      background: 'white',
+                      foreground: '#000000',
+                      level: 'M',
+                      element: (() => {
+                        const c = document.createElement('canvas');
+                        setTimeout(() => {
+                          const qrImg = new window.fabric.Image(c, {
+                            left: objs[j].left,
+                            top: objs[j].top,
+                            scaleX: (objs[j].width || 120) / c.width,
+                            scaleY: (objs[j].height || 120) / c.height
+                          });
+                          // No ocultar el textbox, solo reemplazar el texto por vacío
+                          objs[j].set('text', '');
+                          fabricCanvas.add(qrImg);
+                          resolve();
+                        }, 100);
+                        return c;
+                      })()
+                    });
+                  }));
+                } else {
+                  // Reemplazar todos los marcadores {{campo}} por su valor en los demás textbox
+                  objs[j].set('text', objs[j].text.replace(/{{(\w+)}}/g, function(match, p1) {
+                    return (items[idx] && items[idx][p1] !== undefined) ? items[idx][p1] : match;
+                  }));
+                }
               }
             }
             Promise.all(qrPromises).then(() => {
+              fabricCanvas.getObjects().forEach(obj => obj.set('visible', true));
               fabricCanvas.renderAll();
               // Exportar el canvas como imagen y mostrarlo en la celda
               const img = document.createElement('img');
@@ -360,7 +355,7 @@ function aplicarGrilla(filtrado = null) {
             });
           });
         } else {
-          // Fallback: mostrar QR si no hay plantilla
+          // Fallback: solo QR si no hay plantilla
           const qrDiv = document.createElement('div');
           qrDiv.style.display = 'block';
           qrDiv.style.margin = '0 auto';
@@ -373,7 +368,7 @@ function aplicarGrilla(filtrado = null) {
               qrDiv.appendChild(c);
               return c;
             })(),
-            value: item.url,
+            value: `http://${ip}:${port}/activos/detalle/${items[idx].id || items[idx].codigo_activo || items[idx].codigo || ''}`,
             size: 120,
             background: 'white',
             foreground: '#000000',
@@ -382,7 +377,7 @@ function aplicarGrilla(filtrado = null) {
         }
         tieneQR = true;
       } else {
-        div.innerHTML = '';
+        div.innerHTML = '<span style="color:gray">Sin datos</span>';
       }
       grid.appendChild(div);
       idx++;
