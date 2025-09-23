@@ -82,6 +82,13 @@ function aplicarGrilla(filtrado = null) {
     grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
     grid.style.gap = '0';
+    // PRIMERO agregar el grid al sheet y sheet al DOM para que tenga tamaño
+    sheet.appendChild(grid);
+    previewContainer.appendChild(sheet);
+    // Ahora sí, calcular tamaños
+    const gridRect = grid.getBoundingClientRect();
+    const cellWidth = gridRect.width / cols || 180;
+    const cellHeight = gridRect.height / rows || 180;
     let tieneQR = false;
     for (let i = 0; i < itemsPerPage; i++) {
       const div = document.createElement('div');
@@ -104,9 +111,6 @@ function aplicarGrilla(filtrado = null) {
             idx++;
             continue;
           }
-          const gridRect = grid.getBoundingClientRect();
-          const cellWidth = gridRect.width / cols;
-          const cellHeight = gridRect.height / rows;
           let escalaX = cellWidth / 550;
           let escalaY = cellHeight / 600;
           if (plantillaObj.objects) {
@@ -139,7 +143,6 @@ function aplicarGrilla(filtrado = null) {
                     let qrHeight = Math.max(40, Math.abs((objs[j].height || 100) * (objs[j].scaleY || 1)));
                     if (qrWidth < 5) qrWidth = cellWidth;
                     if (qrHeight < 5) qrHeight = cellHeight;
-                    console.log('QR area (width × scaleX):', qrWidth, 'QR area (height × scaleY):', qrHeight);
                     if (objs[j].text && objs[j].text.includes('{{url}}')) {
                       // Usar generarQRCanvas para tamaño cuadrado máximo
                       const qrCanvas = document.createElement('canvas');
@@ -160,21 +163,6 @@ function aplicarGrilla(filtrado = null) {
                       qrImg.height = qrHeight;
                       objs[j].set('text', '');
                       fabricCanvas.add(qrImg);
-                      // Opcional: debug border
-                      /*
-                      const debugBorder = new window.fabric.Rect({
-                        left: objs[j].left,
-                        top: objs[j].top,
-                        width: qrWidth,
-                        height: qrHeight,
-                        fill: 'rgba(0,0,0,0)',
-                        stroke: 'red',
-                        strokeWidth: 2,
-                        selectable: false,
-                        evented: false
-                      });
-                      fabricCanvas.add(debugBorder);
-                      */
                       resolve();
                     } else {
                       resolve();
@@ -227,11 +215,11 @@ function aplicarGrilla(filtrado = null) {
       grid.appendChild(div);
       idx++;
     }
-    if (tieneQR) {
-      sheet.appendChild(grid);
-      previewContainer.appendChild(sheet);
-      actualPage++;
+    if (!tieneQR) {
+      // Si no hay QR, eliminar el sheet y grid del DOM
+      previewContainer.removeChild(sheet);
     }
+    actualPage++;
   }
 }
 
