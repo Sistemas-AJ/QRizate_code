@@ -108,6 +108,28 @@ fabric.Object.prototype.cornerSize = 14;
 fabric.Object.prototype.hoverCursor = 'pointer';
 let dataRows = [];
 window.dataRows = dataRows;
+
+// --- GUARDADO AUTOMÁTICO EN LOCALSTORAGE ---
+function saveDataRowsToLocalStorage() {
+  try {
+    localStorage.setItem('editor_data_rows', JSON.stringify(window.dataRows));
+  } catch (e) {
+    console.error('[Editor] Error guardando dataRows en localStorage:', e);
+  }
+}
+
+function loadDataRowsFromLocalStorage() {
+  try {
+    const stored = localStorage.getItem('editor_data_rows');
+    if (stored) {
+      window.dataRows = JSON.parse(stored);
+      dataRows = window.dataRows;
+    }
+  } catch (e) {
+    console.error('[Editor] Error cargando dataRows de localStorage:', e);
+  }
+}
+
 let zip = new JSZip();
 let fileNameCounts = {};
 let history = [];
@@ -227,14 +249,13 @@ function loadExcel(event) {
     const data = e.target.result;
     const workbook = XLSX.read(data, { type: 'binary' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    
     // ===== CAMBIO: USA LA VARIABLE GLOBAL =====
     // Generar QR SVG y guardarlo en la variable QR de cada registro
     const rows = XLSX.utils.sheet_to_json(sheet);
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-            // Generar QR SVG desde la columna 'url' (no se guarda en la base de datos)
-            const url = row.url || '';
+      // Generar QR SVG desde la columna 'url' (no se guarda en la base de datos)
+      const url = row.url || '';
       if (window.QRCode && url) {
         const tempDiv = document.createElement('div');
         new window.QRCode(tempDiv, {
@@ -251,11 +272,10 @@ function loadExcel(event) {
       }
     }
     window.dataRows = rows;
-
+    saveDataRowsToLocalStorage();
     alert('Datos de Excel cargados.');
     populateColumnSelectors();
     document.getElementById('columns-menu').disabled = false;
-
     // Al cargar desde Excel, también refrescamos la vista previa
     generatePreview(); 
   };
@@ -264,37 +284,30 @@ function loadExcel(event) {
 
 async function loadDataFromAPI() {
   const apiUrl = 'http://localhost:8000/activos/';
-  
   showModal('Cargando datos desde la API...', []);
-
   try {
     const response = await fetch(apiUrl);
-
     if (!response.ok) {
       throw new Error(`Error en la red: ${response.status} - ${response.statusText}`);
     }
-
     const apiData = await response.json();
     console.log("Datos recibidos de la API:", apiData);
-
     if (Array.isArray(apiData) && apiData.length > 0) {
       window.dataRows = apiData;
+      saveDataRowsToLocalStorage();
       populateColumnSelectors();
       document.getElementById('columns-menu').disabled = false;
-      
       // ===============================================================
       // ===== LÍNEA CLAVE AÑADIDA: Forzamos el refresco del preview =====
       console.log('Datos cargados, forzando actualización de la Vista Previa...');
       generatePreview();
       // ===============================================================
-      
       showModal('¡Datos cargados correctamente desde la API!', [
         { text: 'Aceptar', value: 'ok', class: 'primary' }
       ]);
     } else {
       throw new Error("La API no devolvió datos válidos o la lista está vacía.");
     }
-
   } catch (error) {
     console.error('Falló la carga de datos desde la API:', error);
     showModal(`Error al cargar los datos: ${error.message}`, [
@@ -751,6 +764,9 @@ function debounce(func, delay) {
 // --- 7. INICIALIZACIÓN Y LISTENERS DE EVENTOS ---
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Cargar datos de la API automáticamente al iniciar
+  loadDataFromAPI();
+  loadDataRowsFromLocalStorage();
   inicializarAtajos(canvas, { undo, redo, deleteSelected, saveTemplate, saveState, debouncedGeneratePreview });
   history = [JSON.stringify(canvas.toJSON())];
   historyIndex = 0;

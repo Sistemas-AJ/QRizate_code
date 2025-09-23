@@ -1,9 +1,52 @@
-let ip = localStorage.getItem('qr_app_ip') || '127.0.0.1';
-let port = localStorage.getItem('qr_app_port') || '8000';
+// --- INTEGRACIÓN CON ELECTRON PARA IP Y PUERTO ---
+let electronIp = null;
+let electronPort = null;
+let datosCargados = false;
+function setElectronIp(ip) {
+  if (ip && ip !== electronIp) {
+    electronIp = ip;
+    localStorage.setItem('qr_app_ip', ip);
+    intentarCargarQRsElectron();
+  }
+}
+function setElectronPort(port) {
+  if (port && port !== electronPort) {
+    electronPort = port;
+    localStorage.setItem('qr_app_port', port);
+    intentarCargarQRsElectron();
+  }
+}
+function intentarCargarQRsElectron() {
+  if (electronIp && electronPort && !datosCargados) {
+    datosCargados = true;
+    if (typeof cargarQRs === 'function') cargarQRs();
+  }
+}
+window.addEventListener('DOMContentLoaded', function() {
+  if (window.electronAPI && window.electronAPI.onSetApiPort) {
+    window.electronAPI.onSetApiPort(setElectronPort);
+  }
+  if (window.electronAPI && window.electronAPI.onSetLocalIp) {
+    window.electronAPI.onSetLocalIp(setElectronIp);
+  }
+  // Si no es Electron, cargar QRs directamente
+  if (!(window.electronAPI && (window.electronAPI.onSetApiPort || window.electronAPI.onSetLocalIp))) {
+    if (typeof cargarQRs === 'function') cargarQRs();
+  }
+});
+
+function getIpPort() {
+  let ip = localStorage.getItem('qr_app_ip') || '127.0.0.1';
+  let port = localStorage.getItem('qr_app_port') || '8000';
+  ip = ip.trim() || '127.0.0.1';
+  port = port.toString().trim() || '8000';
+  return {ip, port};
+}
 let qrItems = [];
 let qrRawData = [];
 
 function renderQRCard(item) {
+  const {ip, port} = getIpPort();
   const id = item.id || item.codigo_activo || item.codigo || '';
   const codigo = item.codigo_activo || item.codigo || item.id || '';
   const url = `http://${ip}:${port}/activos/detalle/${id}`;
@@ -15,6 +58,7 @@ function renderQRCard(item) {
 }
 
 function generarTodosLosQRs() {
+  const {ip, port} = getIpPort();
   qrRawData.forEach(item => {
     const id = item.id || item.codigo_activo || item.codigo || '';
     const url = `http://${ip}:${port}/activos/detalle/${id}`;
@@ -24,8 +68,7 @@ function generarTodosLosQRs() {
       qrDiv.innerHTML = '';
       const c = document.createElement('canvas');
       qrDiv.appendChild(c);
-  // Tamaño fijo para index, pero aquí podrías calcular según contexto si lo necesitas
-  window.generarQRCanvas(c, url, 120);
+      window.generarQRCanvas(c, url, 120);
     }
   });
 }
@@ -37,20 +80,46 @@ window.makeQrCanvas = function(divId, text) {
     qrDiv.innerHTML = '';
     var canvas = document.createElement('canvas');
     qrDiv.appendChild(canvas);
-  // Tamaño fijo para index, pero aquí podrías calcular según contexto si lo necesitas
-  window.generarQRCanvas(canvas, text, 120);
+    // Tamaño fijo para index, pero aquí podrías calcular según contexto si lo necesitas
+    window.generarQRCanvas(canvas, text, 120);
   }
 }
 
-async function cargarQRs() {
+window.addEventListener('DOMContentLoaded', function() {
+  // Siempre cargar los QRs desde la API al iniciar
+  if (typeof cargarQRs === 'function') cargarQRs(true);
+});
+
+async function cargarQRs(forceApi = false) {
+  const {ip, port} = getIpPort();
   try {
+    // 1. Si forceApi, ignora localStorage y usa solo la API
+    if (!forceApi) {
+      let localData = localStorage.getItem('editor_data_rows');
+      if (localData) {
+        try {
+          const parsed = JSON.parse(localData);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            qrRawData = parsed.filter(item => (item.id || item.codigo_activo || item.codigo));
+            qrItems = qrRawData.map(renderQRCard);
+            aplicarGrilla();
+            return;
+          }
+        } catch (e) {}
+      }
+    }
+    // 2. Siempre intentar cargar desde la API
     const response = await fetch(`http://${ip}:${port}/activos/`);
     if (!response.ok) throw new Error("Network response was not ok");
     const data = await response.json();
+    console.log("Datos recibidos de la API:", data); // DEPURADOR
     qrRawData = data.filter(item => (item.id || item.codigo_activo || item.codigo) && (item.codigo_activo !== 'string' && item.codigo !== 'string'));
+    console.log("Datos filtrados:", qrRawData); // DEPURADOR
     qrItems = qrRawData.map(renderQRCard);
     aplicarGrilla();
   } catch (e) {
+    console.error("Error al cargar QRs:", e); // DEPURADOR
+    // Si la API falla, usar localStorage como último recurso
     var data = localStorage.getItem('qr_print_items');
     if (!data) return;
     const parsed = JSON.parse(data);
@@ -61,6 +130,7 @@ async function cargarQRs() {
 }
 
 function aplicarGrilla(filtrado = null) {
+  const {ip, port} = getIpPort();
   const previewContainer = document.getElementById('preview-container');
   previewContainer.innerHTML = '';
   const rows = parseInt(document.getElementById('grid-rows').value) || 2;
@@ -82,10 +152,8 @@ function aplicarGrilla(filtrado = null) {
     grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
     grid.style.gap = '0';
-    // PRIMERO agregar el grid al sheet y sheet al DOM para que tenga tamaño
     sheet.appendChild(grid);
     previewContainer.appendChild(sheet);
-    // Ahora sí, calcular tamaños
     const gridRect = grid.getBoundingClientRect();
     const cellWidth = gridRect.width / cols || 180;
     const cellHeight = gridRect.height / rows || 180;
@@ -127,52 +195,52 @@ function aplicarGrilla(filtrado = null) {
           canvasTmp.width = cellWidth;
           canvasTmp.height = cellHeight;
           const fabricCanvas = new window.fabric.Canvas(canvasTmp, { width: cellWidth, height: cellHeight });
+          const itemActual = items[idx];
           fabricCanvas.loadFromJSON(plantillaObj, function() {
             const objs = fabricCanvas.getObjects();
             let qrPromises = [];
             for (let j = 0; j < objs.length; j++) {
               objs[j].set('visible', true);
               if (objs[j].type === 'textbox') {
-                if (objs[j].text && objs[j].text.trim() === '{{url}}') {
+                // Si contiene {{url}}, renderiza QR y borra el texto
+                if (objs[j].text && objs[j].text.includes('{{url}}')) {
                   qrPromises.push(new Promise(resolve => {
                     let qrValue = '';
-                    if (items[idx]) {
-                      qrValue = `http://${ip}:${port}/activos/detalle/${items[idx].id || items[idx].codigo_activo || items[idx].codigo || ''}`;
+                    if (itemActual) {
+                      qrValue = `http://${ip}:${port}/activos/detalle/${itemActual.id || itemActual.codigo_activo || itemActual.codigo || ''}`;
                     }
                     let qrWidth = Math.max(40, Math.abs((objs[j].width || 100) * (objs[j].scaleX || 1)));
                     let qrHeight = Math.max(40, Math.abs((objs[j].height || 100) * (objs[j].scaleY || 1)));
                     if (qrWidth < 5) qrWidth = cellWidth;
                     if (qrHeight < 5) qrHeight = cellHeight;
-                    if (objs[j].text && objs[j].text.includes('{{url}}')) {
-                      // Usar generarQRCanvas para tamaño cuadrado máximo
-                      const qrCanvas = document.createElement('canvas');
-                      const qrSize = Math.min(qrWidth, qrHeight);
-                      qrCanvas.width = qrSize;
-                      qrCanvas.height = qrSize;
-                      window.generarQRCanvas(qrCanvas, qrValue, qrSize);
-                      // Redimensionar el QR para que ocupe el área deseada sin deformar
-                      const qrImg = new window.fabric.Image(qrCanvas, {
-                        left: objs[j].left,
-                        top: objs[j].top,
-                        width: qrWidth,
-                        height: qrHeight,
-                        angle: objs[j].angle || 0,
-                        scaleX: 1,
-                        scaleY: 1
-                      });
-                      qrImg.height = qrHeight;
-                      objs[j].set('text', '');
-                      fabricCanvas.add(qrImg);
-                      resolve();
-                    } else {
-                      resolve();
-                    }
-                  }));
-                } else {
-                  objs[j].set('text', objs[j].text.replace(/{{(\w+)}}/g, function(match, p1) {
-                    return (items[idx] && items[idx][p1] !== undefined) ? items[idx][p1] : match;
+                    // Renderiza el QR
+                    const qrCanvas = document.createElement('canvas');
+                    const qrSize = Math.min(qrWidth, qrHeight);
+                    qrCanvas.width = qrSize;
+                    qrCanvas.height = qrSize;
+                    window.generarQRCanvas(qrCanvas, qrValue, qrSize);
+                    const qrImg = new window.fabric.Image(qrCanvas, {
+                      left: objs[j].left,
+                      top: objs[j].top,
+                      width: qrWidth,
+                      height: qrHeight,
+                      angle: objs[j].angle || 0,
+                      scaleX: 1,
+                      scaleY: 1
+                    });
+                    qrImg.height = qrHeight;
+                    objs[j].set('text', '');
+                    fabricCanvas.add(qrImg);
+                    resolve();
                   }));
                 }
+                // Reemplazo robusto usando itemActual
+                const textoOriginal = objs[j].text;
+                objs[j].set('text', objs[j].text.replace(/{{\s*(\w+)\s*}}/g, function(match, p1) {
+                  const valor = (itemActual && itemActual[p1] !== undefined && itemActual[p1] !== null) ? itemActual[p1] : match;
+                  console.log(`Reemplazando ${match} por`, valor, 'en', textoOriginal, 'del item', itemActual); // DEPURADOR
+                  return valor;
+                }));
               }
             }
             Promise.all(qrPromises).then(() => {
@@ -216,7 +284,6 @@ function aplicarGrilla(filtrado = null) {
       idx++;
     }
     if (!tieneQR) {
-      // Si no hay QR, eliminar el sheet y grid del DOM
       previewContainer.removeChild(sheet);
     }
     actualPage++;
