@@ -61,19 +61,13 @@
           </div>
         </div>
         <div class="dropdown">
-          <button class="dropdown-toggle">
-            <i class="fas fa-file-export"></i> Exportar
+          <button class="dropdown-toggle" onclick="document.getElementById('template-input').click();">
+            <i class="fas fa-file-import"></i> Importar Diseño
           </button>
           <div class="dropdown-menu">
-            <a href="#" onclick="generateCertificates(); return false;"
-              ><i class="fas fa-file-pdf"></i> Generar Certificados (Excel)</a
-            >
-            <a href="#" onclick="exportSinglePDF(); return false;"
-              ><i class="fas fa-file-export"></i> Exportar PDF Único</a
-            >
-            <a href="#" onclick="downloadAll(); return false;"
-              ><i class="fas fa-download"></i> Descargar Todos (ZIP)</a
-            >
+            <a href="#" onclick="document.getElementById('template-input').click(); return false;">
+              <i class="fas fa-file-import"></i> Importar Plantilla/Diseño (.json)
+            </a>
           </div>
         </div>
         <div class="direct-actions">
