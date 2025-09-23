@@ -50,8 +50,23 @@ async function startBackend() {
       ? path.join(process.resourcesPath, 'app', 'main.py')
       : path.join(__dirname, 'app', 'main.py');
 
+    // Detectar ejecutable Python del venv
+    let pythonExe;
+    const venvPath = path.join(__dirname, 'app', '.venv');
+    if (process.platform === 'win32') {
+      pythonExe = path.join(venvPath, 'Scripts', 'python.exe');
+    } else {
+      pythonExe = path.join(venvPath, 'bin', 'python');
+    }
+    const fs = require('fs');
+    if (!fs.existsSync(pythonExe)) {
+      // Fallback a python global si no existe el venv
+      pythonExe = 'python';
+      console.warn('No se encontró el ejecutable del venv, usando Python global.');
+    }
+
     // Iniciar el proceso de Python
-    backendProcess = spawn('python', [scriptPath, '--port', port, '--public-url', PUBLIC_URL_BASE]);
+    backendProcess = spawn(pythonExe, [scriptPath, '--port', port, '--public-url', PUBLIC_URL_BASE]);
 
     // Manejar la salida del proceso
     backendProcess.stdout.on('data', (data) => {
@@ -85,7 +100,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false
+      webSecurity: true
     }
   });
 

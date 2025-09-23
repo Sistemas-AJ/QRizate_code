@@ -1,0 +1,127 @@
+.a4-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: white;
+  margin: 0 auto 24px auto;
+  padding: 0;
+  position: relative;
+  display: block;
+  border: 2px dashed #e74c3c;
+}
+.qr-grid {
+  width: 100%;
+  box-sizing: border-box;
+  display: block;
+}
+.qr-item {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+.panel-config-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1500;
+  margin: 0;
+  height: 100vh;
+  min-width: 260px;
+  max-width: 320px;
+  box-shadow: 2px 0 12px #0001;
+  border-radius: 0 12px 12px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding-top: 32px;
+}
+.main-flex {
+  margin-left: 320px;
+}
+.panel-search {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #edf2f7;
+}
+.filtro-codigo-label {
+  font-weight: 200;
+  color: #003B67;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.filtro-codigo-icon {
+  font-size: 1.2em;
+  color: #FF6B00;
+  margin-right: 2px;
+}
+.filtro-codigo-input {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 2px solid #dbe2ea;
+  font-size: 15px;
+  outline: none;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 59, 103, 0.05);
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+.filtro-codigo-input:focus {
+  border-color: #FF6B00;
+  box-shadow: 0 4px 12px rgba(255, 107, 0, 0.15);
+}
+.filtro-codigo-input::placeholder {
+  color: #90a4ae;
+}
+@media (max-width: 700px) {
+  .filtro-codigo-bar {
+    right: 8px;
+    top: 8px;
+    padding: 4px 8px 4px 8px;
+    gap: 6px;
+  }
+  .filtro-codigo-input {
+    width: 110px;
+    font-size: 13px;
+    padding: 5px 8px;
+  }
+  .filtro-codigo-label { font-size: 13px; }
+}
+@media print {
+  #titulo-previa {
+    display: none !important;
+  }
+  .a4-sheet:not(:last-child) {
+    page-break-after: always;
+    break-after: page;
+  }
+  .a4-sheet {
+    display: block !important;
+    border: 2px solid #3498db !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+  }
+  .panel-config, .filtro-codigo-bar, .main-flex > .panel-config, .main-flex > .filtro-codigo-bar {
+    display: none !important;
+  }
+  body, html {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  #preview-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+  @page {
+    margin: 0;
+  }
+}

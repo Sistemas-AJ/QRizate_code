@@ -262,15 +262,7 @@ function renderQr(urlParaElQr, container, codigo) {
     container.innerHTML = '';
     const canvas = document.createElement('canvas');
     container.appendChild(canvas);
-
-    // El QR contiene la URL completa
-    new QRious({
-        element: canvas,
-        value: urlParaElQr,
-        size: 250,
-    });
-
-    // Debajo del QR, muestra solo el código
+    window.generarQRCanvas(canvas, urlParaElQr, 250);
     const codeDiv = document.createElement('div');
     codeDiv.style.marginTop = '10px';
     codeDiv.style.wordBreak = 'break-all';

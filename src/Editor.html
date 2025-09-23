@@ -57,20 +57,7 @@
                 <option value="">(seleccionar)</option>
               </select>
             </div>
-            <div class="control-group">
-              <label for="filename-column-select"
-                >Columna para Nombre de la Empresa:</label
-              >
-              <select id="filename-column-select">
-                <option value="">Por defecto ('nombre')</option>
-              </select>
-            </div>
-            <div class="control-group">
-              <label for="qr-column-select">Columna para QR:</label>
-              <select id="qr-column-select">
-                <option value="">url</option>
-              </select>
-            </div>
+            <!-- Eliminados: no se usan más selectores, solo el menú de campos dinámicos -->
           </div>
         </div>
         <div class="dropdown">
@@ -263,9 +250,10 @@
       <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
       <script src="js/svg2pdf.umd.min.js"></script>
-      <script src="js/qr.js"></script>
+  <script src="js/qr-util.js"></script>
+  <script src="js/qr.js"></script>
       <script src="js/atajos.js"></script>
       <script src="js/diseño.js"></script>
       <script>

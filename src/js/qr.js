@@ -126,11 +126,21 @@ function addText() {
 }
 
 function addQrPlaceholder() {
+  // Agrega un textbox dinámico igual que el menú de campos dinámicos
   const qrPlaceholder = new fabric.Textbox('{{url}}', {
-    left: 150, top: 150, fontSize: 30, fill: '#007bff',
-    fontFamily: 'Courier New', width: 150, textAlign: 'center',
+    left: 150,
+    top: 150,
+    fontSize: 30,
+    fill: '#007bff',
+    fontFamily: 'Courier New',
+    width: 200,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    editable: true
   });
   canvas.add(qrPlaceholder);
+  canvas.setActiveObject(qrPlaceholder);
+  canvas.requestRenderAll();
 }
 
 function triggerImageUpload() {
@@ -286,43 +296,25 @@ async function loadDataFromAPI() {
 
 
 function populateColumnSelectors() {
-  // Obtenemos los 3 menús desplegables
-  const selectsToPopulate = [
-    document.getElementById("columns-menu"),
-    document.getElementById("qr-column-select"),
-    document.getElementById("filename-column-select")
-  ];
-
-  // 1. Limpiamos las opciones viejas de cada <select> de forma segura,
-  //    dejando solo la primera opción ("seleccionar", "por defecto", etc.)
-  selectsToPopulate.forEach(selectElement => {
-    while (selectElement.options.length > 1) {
-      selectElement.remove(1);
-    }
+  // Solo poblar el menú de campos dinámicos (columns-menu) si existe y hay datos
+  // Solo poblar el menú de campos dinámicos (columns-menu) si existe y hay datos
+  const columnsMenu = document.getElementById('columns-menu');
+  if (!columnsMenu) return;
+  // Limpiar todas las opciones
+  columnsMenu.innerHTML = '';
+  // Agregar opción placeholder
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = '(seleccionar)';
+  columnsMenu.appendChild(placeholder);
+  if (!window.dataRows || !window.dataRows.length) return;
+  const cols = Object.keys(window.dataRows[0]);
+  cols.forEach(col => {
+    const opt = document.createElement('option');
+    opt.value = col;
+    opt.textContent = col;
+    columnsMenu.appendChild(opt);
   });
-
-  // 2. Verificamos que tengamos datos para agregar
-  if (window.dataRows && window.dataRows.length > 0) {
-    
-    // 3. Obtenemos las cabeceras (keys) del primer objeto de datos
-    const columns = Object.keys(window.dataRows[0]);
-
-    // 4. Creamos y añadimos las nuevas opciones a cada <select>
-    columns.forEach(col => {
-      const option = document.createElement("option");
-      option.value = col;
-      option.textContent = col; // Usar textContent es más seguro
-
-      // Añadimos la nueva opción a los tres menús
-      selectsToPopulate.forEach(selectElement => {
-        selectElement.appendChild(option.cloneNode(true));
-      });
-    });
-    
-    console.log('✅ Menús desplegables poblados con:', columns);
-  } else {
-    console.warn('⚠️ No se encontraron datos en window.dataRows para poblar los menús.');
-  }
 }
 
 // --- 4. FUNCIONES DE HISTORIAL Y SEGURIDAD ---
@@ -461,21 +453,32 @@ function processQrForCanvas(canvasInstance, rowData, qrColumn) {
     const qrPlaceholder = canvasInstance.getObjects().find(o => o.text && o.text.includes('{{url}}'));
     if (!qrPlaceholder) return resolve();
 
-  let qrData = qrColumn ? rowData[qrColumn] : (rowData['url'] || rowData['URL'] || rowData['Url']);
+    let qrData = qrColumn ? rowData[qrColumn] : (rowData['url'] || rowData['URL'] || rowData['Url']);
     if (qrData) {
-      QRCode.toDataURL(qrData, { width: qrPlaceholder.getScaledWidth(), margin: 1 }, (err, url) => {
-        if (url) {
-          fabric.Image.fromURL(url, qrImg => {
-            qrImg.set({ left: qrPlaceholder.left, top: qrPlaceholder.top, angle: qrPlaceholder.angle });
-            canvasInstance.remove(qrPlaceholder);
-            canvasInstance.add(qrImg);
-            resolve();
-          });
-        } else {
-          canvasInstance.remove(qrPlaceholder);
-          resolve();
-        }
+      // Usar generarQRCanvas para tamaño cuadrado máximo del objeto
+      const qrCanvas = document.createElement('canvas');
+      const qrSize = Math.min(
+        Math.abs((qrPlaceholder.width || 100) * (qrPlaceholder.scaleX || 1)),
+        Math.abs((qrPlaceholder.height || 100) * (qrPlaceholder.scaleY || 1))
+      );
+      qrCanvas.width = qrSize;
+      qrCanvas.height = qrSize;
+      window.generarQRCanvas(qrCanvas, qrData, qrSize);
+      const qrImg = new window.fabric.Image(qrCanvas, {
+        left: qrPlaceholder.left,
+        top: qrPlaceholder.top,
+        width: qrPlaceholder.width,
+        height: qrPlaceholder.height,
+        angle: qrPlaceholder.angle || 0,
+        scaleX: 1,
+        scaleY: 1
       });
+      canvasInstance.remove(qrPlaceholder);
+      canvasInstance.add(qrImg);
+      resolve();
+          // ...existing code para clonar el canvas y renderizar la vista previa...
+          // Suponiendo que el canvas de preview tiene id 'preview-canvas'
+          // y que el valor de la URL a codificar está en una variable rowData.url o similar
     } else {
       canvasInstance.remove(qrPlaceholder);
       resolve();
@@ -573,47 +576,53 @@ function generatePreview() {
   window.previewFabricCanvas = previewCanvas;
 
   previewCanvas.loadFromJSON(canvas.toJSON(), () => {
-    const promises = [];
+    let qrRendered = false;
     if (window.dataRows && window.dataRows.length > 0) {
       const row = window.dataRows[0];
-      const qrColumn = document.getElementById('qr-column-select').value;
+      const qrColumn = 'url'; // Siempre usar la columna 'url' para el QR
+      // Si existe el select, forzar su valor a 'url' para la UI
+      const qrColSelect = document.getElementById('qr-column-select');
+      if (qrColSelect) qrColSelect.value = 'url';
 
       previewCanvas.getObjects().forEach(obj => {
-  // Si el texto contiene el placeholder de la columna seleccionada para QR, genera el QR
-  if (
-    (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') &&
-    obj.text.includes(`{{${qrColumn}}}`)
-  ) {
-    const qrPromise = new Promise(resolve => {
-      let qrData = row[qrColumn];
-      if (qrData) {
-        QRCode.toDataURL(qrData.toString(), { width: obj.getScaledWidth(), margin: 1 }, (err, url) => {
-          if (err) {
-            console.error('Error generando QR:', err);
-            previewCanvas.remove(obj);
-            return resolve();
-          }
-          fabric.Image.fromURL(url, qrImg => {
-            qrImg.set({ left: obj.left, top: obj.top, angle: obj.angle });
+        // Si el texto contiene el placeholder {{url}}, genera el QR
+        if (
+          (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') &&
+          obj.text.includes(`{{url}}`)
+        ) {
+          let qrData = row[qrColumn];
+          if (qrData) {
+            const qrCanvas = document.createElement('canvas');
+            const qrSize = Math.min(
+              Math.abs((obj.width || 100) * (obj.scaleX || 1)),
+              Math.abs((obj.height || 100) * (obj.scaleY || 1))
+            );
+            qrCanvas.width = qrSize;
+            qrCanvas.height = qrSize;
+            window.generarQRCanvas(qrCanvas, qrData, qrSize);
+            const qrImg = new window.fabric.Image(qrCanvas, {
+              left: obj.left,
+              top: obj.top,
+              width: obj.width,
+              height: obj.height,
+              angle: obj.angle || 0,
+              scaleX: 1,
+              scaleY: 1
+            });
             previewCanvas.remove(obj);
             previewCanvas.add(qrImg);
-            resolve();
-          });
-        }); 
-      } else {
-        previewCanvas.remove(obj);
-        resolve();
-      }
-    });
-    promises.push(qrPromise);
-  } else if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
-    replaceTextWithStyles(obj, row);
-  }
-});
+            qrRendered = true;
+          } else {
+            previewCanvas.remove(obj);
+          }
+        } else if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
+          replaceTextWithStyles(obj, row);
+        }
+      });
     }
-    Promise.all(promises).then(() => {
-      previewCanvas.renderAll();
-    });
+    // Solo mostrar el QR si existe un objeto con {{url}} y hay datos con url
+    // Si no, no mostrar ningún QR extra
+    previewCanvas.renderAll();
   });
 }
 
