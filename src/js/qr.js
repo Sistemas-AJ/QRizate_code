@@ -136,7 +136,16 @@ function addQrPlaceholder() {
     width: 200,
     textAlign: 'center',
     fontWeight: 'bold',
-    editable: true
+    editable: true,
+    lockScalingFlip: true, // Permite escalar libremente pero no voltear
+    lockUniScaling: false, // Permite escalar en X/Y de forma independiente
+    minWidth: 40,
+    minHeight: 40
+  });
+  qrPlaceholder.setControlsVisibility({
+    mt: true, mb: true, ml: true, mr: true, // Permite escalar en todos los lados
+    bl: true, br: true, tl: true, tr: true, // Permite escalar en las esquinas
+    mtr: true // Permite rotar
   });
   canvas.add(qrPlaceholder);
   canvas.setActiveObject(qrPlaceholder);
@@ -593,18 +602,17 @@ function generatePreview() {
           let qrData = row[qrColumn];
           if (qrData) {
             const qrCanvas = document.createElement('canvas');
-            const qrSize = Math.min(
-              Math.abs((obj.width || 100) * (obj.scaleX || 1)),
-              Math.abs((obj.height || 100) * (obj.scaleY || 1))
-            );
-            qrCanvas.width = qrSize;
-            qrCanvas.height = qrSize;
-            window.generarQRCanvas(qrCanvas, qrData, qrSize);
+            // Usar el tamaño real de la caja en el editor
+            const qrWidth = Math.abs((obj.width || 100) * (obj.scaleX || 1));
+            const qrHeight = Math.abs((obj.height || 100) * (obj.scaleY || 1));
+            qrCanvas.width = qrWidth;
+            qrCanvas.height = qrHeight;
+            window.generarQRCanvas(qrCanvas, qrData, { width: qrWidth, height: qrHeight });
             const qrImg = new window.fabric.Image(qrCanvas, {
               left: obj.left,
               top: obj.top,
-              width: obj.width,
-              height: obj.height,
+              width: qrWidth,
+              height: qrHeight,
               angle: obj.angle || 0,
               scaleX: 1,
               scaleY: 1
