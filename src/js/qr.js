@@ -103,7 +103,8 @@ const canvas = new fabric.Canvas('canvas', {
   selectionLineWidth: 2
 });
 window.canvas = canvas;
-fabric.Object.prototype.padding = 8;
+fabric.Object.prototype.padding = 0;
+fabric.Textbox.prototype.padding = 0;
 fabric.Object.prototype.cornerSize = 14;
 fabric.Object.prototype.hoverCursor = 'pointer';
 let dataRows = [];
@@ -137,8 +138,6 @@ let historyIndex = -1;
 let savedHistoryIndex = -1;
 let historyLock = false;
 
-// --- 2. FUNCIONES DE MANEJO DEL LIENZO Y PLANTILLAS ---
-
 function addText() {
   const text = new fabric.Textbox('Ingrese texto...', {
     left: 100, top: 100, fontSize: 20, fill: '#000000',
@@ -162,7 +161,8 @@ function addQrPlaceholder() {
     lockScalingFlip: true, // Permite escalar libremente pero no voltear
     lockUniScaling: false, // Permite escalar en X/Y de forma independiente
     minWidth: 40,
-    minHeight: 40
+    minHeight: 40,
+    padding: 0
   });
   qrPlaceholder.setControlsVisibility({
     mt: true, mb: true, ml: true, mr: true, // Permite escalar en todos los lados
@@ -765,10 +765,8 @@ function debounce(func, delay) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   await checkForAutoSave();
-  if (!window.sessionRestored) {
-    // Cargar datos de la API automáticamente al iniciar solo si no se restauró la sesión
-    loadDataFromAPI();
-  }
+  // No cargar datos automáticamente desde la API al abrir el editor
+  // Solo restaurar si el usuario lo decide, sin alertas ni notificaciones extra
   loadDataRowsFromLocalStorage();
   inicializarAtajos(canvas, { undo, redo, deleteSelected, saveTemplate, saveState, debouncedGeneratePreview });
   history = [JSON.stringify(canvas.toJSON())];

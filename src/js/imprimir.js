@@ -165,11 +165,11 @@ function aplicarGrilla(filtrado = null) {
       div.className = 'qr-item';
       if (idx < totalItems && items[idx] && typeof items[idx] === 'object') {
         if (plantillaJSON && window.fabric) {
-          let plantillaObj;
+          let plantillaObjOriginal;
           try {
-            plantillaObj = JSON.parse(plantillaJSON);
-            if (plantillaObj.objects) {
-              plantillaObj.objects.forEach(obj => {
+            plantillaObjOriginal = JSON.parse(plantillaJSON);
+            if (plantillaObjOriginal.objects) {
+              plantillaObjOriginal.objects.forEach(obj => {
                 if (obj.textBaseline && obj.textBaseline === 'alphabetical') {
                   obj.textBaseline = 'alphabetic';
                 }
@@ -181,10 +181,15 @@ function aplicarGrilla(filtrado = null) {
             idx++;
             continue;
           }
+          // --- CLONAR la plantilla para cada celda ---
+          let plantillaObj = JSON.parse(JSON.stringify(plantillaObjOriginal));
           let escalaX = cellWidth / 550;
           let escalaY = cellHeight / 600;
           if (plantillaObj.objects) {
             plantillaObj.objects.forEach(obj => {
+              if (obj.type === 'textbox') {
+                obj.padding = 0; // Fuerza padding 0 al cargar la plantilla
+              }
               obj.left = (obj.left || 0) * escalaX;
               obj.top = (obj.top || 0) * escalaY;
               obj.width = (obj.width || 0) * escalaX;
@@ -224,27 +229,30 @@ function aplicarGrilla(filtrado = null) {
                     if (itemActual) {
                       qrValue = itemActual.url;
                     }
-                    let qrWidth = Math.max(40, Math.abs((objs[j].width || 100) * (objs[j].scaleX || 1)));
-                    let qrHeight = Math.max(40, Math.abs((objs[j].height || 100) * (objs[j].scaleY || 1)));
-                    if (qrWidth < 5) qrWidth = cellWidth;
-                    if (qrHeight < 5) qrHeight = cellHeight;
-                    // Renderiza el QR
+                    // Usa el ancho y alto del textbox escalado
+                    let qrWidth = Math.abs((objs[j].width || 100) * (objs[j].scaleX || 1));
+                    let qrHeight = Math.abs((objs[j].height || 100) * (objs[j].scaleY || 1));
+                    const qrSize = Math.min(qrWidth, qrHeight); // Mantén el QR cuadrado
+                    // Centra el QR en el área del textbox
+                    const centerLeft = objs[j].left + ((qrWidth - qrSize) / 2);
+                    const centerTop = objs[j].top + ((qrHeight - qrSize) / 2);
+                    console.log('[QR DEBUG] Celda:', idx, 'Textbox width:', objs[j].width, 'Textbox height:', objs[j].height, 'scaleX:', objs[j].scaleX, 'scaleY:', objs[j].scaleY, 'padding:', objs[j].padding);
+                    console.log('[QR DEBUG] Celda:', idx, 'QR width:', qrSize, 'QR height:', qrSize);
                     const qrCanvas = document.createElement('canvas');
-                    const qrSize = Math.min(qrWidth, qrHeight);
                     qrCanvas.width = qrSize;
                     qrCanvas.height = qrSize;
                     window.generarQRCanvas(qrCanvas, qrValue, qrSize);
                     const qrImg = new window.fabric.Image(qrCanvas, {
-                      left: objs[j].left,
-                      top: objs[j].top,
-                      width: qrWidth,
-                      height: qrHeight,
+                      left: centerLeft,
+                      top: centerTop,
+                      width: qrSize,
+                      height: qrSize,
                       angle: objs[j].angle || 0,
                       scaleX: 1,
-                      scaleY: 1
+                      scaleY: 1,
                     });
-                    qrImg.height = qrHeight;
-                    objs[j].set('text', '');
+                    console.log('[QR DEBUG] Celda:', idx, 'QR fabric image left:', qrImg.left, 'top:', qrImg.top, 'width:', qrImg.width, 'height:', qrImg.height, 'scaleX:', qrImg.scaleX, 'scaleY:', qrImg.scaleY);
+                    fabricCanvas.remove(objs[j]);
                     fabricCanvas.add(qrImg);
                     resolve();
                   }));
