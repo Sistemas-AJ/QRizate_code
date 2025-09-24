@@ -101,6 +101,7 @@ async function cargarQRs(forceApi = false) {
           if (Array.isArray(parsed) && parsed.length > 0) {
             qrRawData = parsed.filter(item => (item.id || item.codigo_activo || item.codigo));
             qrItems = qrRawData.map(renderQRCard);
+            generarTodosLosQRs();
             aplicarGrilla();
             return;
           }
@@ -115,6 +116,7 @@ async function cargarQRs(forceApi = false) {
     qrRawData = data.filter(item => (item.id || item.codigo_activo || item.codigo) && (item.codigo_activo !== 'string' && item.codigo !== 'string'));
     console.log("Datos filtrados:", qrRawData); // DEPURADOR
     qrItems = qrRawData.map(renderQRCard);
+    generarTodosLosQRs();
     aplicarGrilla();
   } catch (e) {
     console.error("Error al cargar QRs:", e); // DEPURADOR
@@ -124,6 +126,7 @@ async function cargarQRs(forceApi = false) {
     const parsed = JSON.parse(data);
     qrRawData = parsed.filter(item => (item.id || item.codigo_activo || item.codigo) && (item.codigo_activo !== 'string' && item.codigo !== 'string'));
     qrItems = qrRawData.map(renderQRCard);
+    generarTodosLosQRs();
     aplicarGrilla();
   }
 }
@@ -198,8 +201,21 @@ function aplicarGrilla(filtrado = null) {
           fabricCanvas.loadFromJSON(plantillaObj, function() {
             const objs = fabricCanvas.getObjects();
             let qrPromises = [];
+            let imgPromises = [];
             for (let j = 0; j < objs.length; j++) {
               objs[j].set('visible', true);
+              // Si es imagen, forzar recarga si es base64 o ruta relativa
+              if (objs[j].type === 'image' && objs[j].src && typeof objs[j].setSrc === 'function') {
+                let src = objs[j].src;
+                // Si es base64 o ruta relativa, recargar
+                if (src.startsWith('data:image') || src.endsWith('.png') || src.endsWith('.jpg') || src.endsWith('.jpeg')) {
+                  imgPromises.push(new Promise(resolveImg => {
+                    objs[j].setSrc(src, () => {
+                      resolveImg();
+                    });
+                  }));
+                }
+              }
               if (objs[j].type === 'textbox') {
                 // Si contiene {{url}}, renderiza QR y borra el texto
                 if (objs[j].text && objs[j].text.includes('{{url}}')) {
@@ -242,7 +258,7 @@ function aplicarGrilla(filtrado = null) {
                 }));
               }
             }
-            Promise.all(qrPromises).then(() => {
+            Promise.all([...qrPromises, ...imgPromises]).then(() => {
               fabricCanvas.getObjects().forEach(obj => obj.set('visible', true));
               fabricCanvas.renderAll();
               const svg = fabricCanvas.toSVG();
@@ -264,8 +280,8 @@ function aplicarGrilla(filtrado = null) {
           const qrDiv = document.createElement('div');
           qrDiv.style.display = 'block';
           qrDiv.style.margin = '0 auto';
-          qrDiv.style.width = '120px';
-          qrDiv.style.height = '120px';
+          qrDiv.style.width = cellWidth + 'px';
+          qrDiv.style.height = cellHeight + 'px';
           div.appendChild(qrDiv);
           let qrValue = '';
           if (items[idx]) {
@@ -273,7 +289,7 @@ function aplicarGrilla(filtrado = null) {
           }
           const c = document.createElement('canvas');
           qrDiv.appendChild(c);
-          window.generarQRCanvas(c, qrValue, 120);
+          window.generarQRCanvas(c, qrValue, Math.min(cellWidth, cellHeight));
         }
         tieneQR = true;
       } else {
