@@ -49,7 +49,7 @@ function renderQRCard(item) {
   const {ip, port} = getIpPort();
   const id = item.id || item.codigo_activo || item.codigo || '';
   const codigo = item.codigo_activo || item.codigo || item.id || '';
-  const url = `http://${ip}:${port}/activos/detalle/${id}`;
+  const url = item.url;
   const qrDivId = `qrgen_${id}`;
   return `<div class='qr-card'>
     <div id='${qrDivId}' class='qr-canvas-holder' style='width:100px;height:100px;margin:0 auto 2px auto; margin-bottom: 0px;'></div>
@@ -61,14 +61,13 @@ function generarTodosLosQRs() {
   const {ip, port} = getIpPort();
   qrRawData.forEach(item => {
     const id = item.id || item.codigo_activo || item.codigo || '';
-    const url = `http://${ip}:${port}/activos/detalle/${id}`;
     const qrDivId = `qrgen_${id}`;
     const qrDiv = document.getElementById(qrDivId);
     if (qrDiv) {
       qrDiv.innerHTML = '';
       const c = document.createElement('canvas');
       qrDiv.appendChild(c);
-      window.generarQRCanvas(c, url, 120);
+      window.generarQRCanvas(c, item.url, 120);
     }
   });
 }
@@ -207,7 +206,7 @@ function aplicarGrilla(filtrado = null) {
                   qrPromises.push(new Promise(resolve => {
                     let qrValue = '';
                     if (itemActual) {
-                      qrValue = `http://${ip}:${port}/activos/detalle/${itemActual.id || itemActual.codigo_activo || itemActual.codigo || ''}`;
+                      qrValue = itemActual.url;
                     }
                     let qrWidth = Math.max(40, Math.abs((objs[j].width || 100) * (objs[j].scaleX || 1)));
                     let qrHeight = Math.max(40, Math.abs((objs[j].height || 100) * (objs[j].scaleY || 1)));
@@ -270,7 +269,7 @@ function aplicarGrilla(filtrado = null) {
           div.appendChild(qrDiv);
           let qrValue = '';
           if (items[idx]) {
-            qrValue = `http://${ip}:${port}/activos/detalle/${items[idx].id || items[idx].codigo_activo || items[idx].codigo || ''}`;
+            qrValue = items[idx].url;
           }
           const c = document.createElement('canvas');
           qrDiv.appendChild(c);

@@ -44,7 +44,7 @@ async function generateQR() {
     localStorage.setItem('qr_app_ip', ip);
     localStorage.setItem('qr_app_port', port);
 
-    const qrtext = `http://${ip}:${port}/activos/detalle/${id}`;
+    const qrtext = `https://qrizate.systempiura.com/activo?sede=${sede}&id=${id}`;
     const url = qrtext;
 
     // Usar QRious para generar el QR
