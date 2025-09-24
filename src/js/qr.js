@@ -763,17 +763,18 @@ function debounce(func, delay) {
 
 // --- 7. INICIALIZACIÓN Y LISTENERS DE EVENTOS ---
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Cargar datos de la API automáticamente al iniciar
-  loadDataFromAPI();
+document.addEventListener('DOMContentLoaded', async () => {
+  await checkForAutoSave();
+  if (!window.sessionRestored) {
+    // Cargar datos de la API automáticamente al iniciar solo si no se restauró la sesión
+    loadDataFromAPI();
+  }
   loadDataRowsFromLocalStorage();
   inicializarAtajos(canvas, { undo, redo, deleteSelected, saveTemplate, saveState, debouncedGeneratePreview });
   history = [JSON.stringify(canvas.toJSON())];
   historyIndex = 0;
   savedHistoryIndex = 0;
   dragElement(document.getElementById("floating-toolbar"));
-
-  checkForAutoSave();
 
   document.getElementById('input-image').addEventListener('change', function (event) {
     const file = event.target.files[0];
