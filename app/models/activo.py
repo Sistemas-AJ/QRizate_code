@@ -8,6 +8,7 @@ class Activo(Base):
     id = Column(String(30), primary_key=True, index=True)
     categoria = Column(Text, nullable=True)
     central_de_costos = Column(Text, nullable=True)
+    nombre_central_costos = Column(Text, nullable=True)  # <-- AGREGADO
     area = Column(Text, nullable=True)
     correlativo = Column(Text, nullable=True, unique=True, index=True)
     cuenta_contable = Column(Text, nullable=True)

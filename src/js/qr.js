@@ -203,12 +203,6 @@ function loadTemplateFromData(jsonData) {
     historyIndex = -1;
     saveState();
     savedHistoryIndex = historyIndex;
-    // Selecciona el primer objeto y muestra la barra de herramientas
-    const objs = canvas.getObjects();
-    if (objs.length > 0) {
-      canvas.setActiveObject(objs[0]);
-      updateFloatingToolbar();
-    }
   });
 }
 

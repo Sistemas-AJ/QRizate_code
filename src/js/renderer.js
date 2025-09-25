@@ -193,7 +193,7 @@ async function handleQrFormSubmit(event) {
                 // Si el usuario acepta, actualiza el activo
                 const correlativo = dataObject.correlativo;
                 // Busca el activo por correlativo para obtener el id
-                const getActivoUrl = `${AppState.apiBaseUrl}/activos/?skip=0&limit=1000`;
+                const getActivoUrl = `${AppState.apiBaseUrl}/activos/?skip=0&limit=100000`;
                 const activosResp = await fetch(getActivoUrl);
                 const activos = await activosResp.json();
                 const existente = activos.find(a => a.correlativo === correlativo);
@@ -401,7 +401,7 @@ function mapExcelRows(rows) {
     const fieldMap = {
         'ID': 'id', 'CATEGORIA': 'categoria', 'CENTRAL DE COSTOS': 'central_de_costos',
         'Nombre de central de costos': 'nombre_central_costos', 'AREA': 'area', 'Nombre del área': 'nombre_area',
-        'CORRELATIVO': 'correlativo', 'CUENTA CONTABLE': 'cuenta_contable', 'ESTADO': 'estado',
+        'NOMBRE CENTRAL DE COSTOS': 'nombre_central_costos', 'CORRELATIVO': 'correlativo', 'CUENTA CONTABLE': 'cuenta_contable', 'ESTADO': 'estado',
         'DESCRIPCION': 'descripcion', 'DESCRIPCIÓN': 'descripcion', 'MARCA': 'marca', 'MODELO': 'modelo',
         'NUMERO DE SERIE': 'numero_serie', 'NÚMERO DE SERIE': 'numero_serie', 'SERIE': 'numero_serie',
         'CODIGO': 'codigo', 'CÓDIGO': 'codigo', 'SEDE': 'sede', 'URL': 'url'

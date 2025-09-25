@@ -32,6 +32,7 @@ class ActivoBase(BaseModel):
     id: Optional[str] = None
     categoria: Optional[str] = None
     central_de_costos: Optional[str] = None
+    nombre_central_costos: Optional[str] = None  
     area: Optional[str] = None
     correlativo: Optional[str] = None
     cuenta_contable: Optional[str] = None
@@ -52,6 +53,7 @@ class ActivoUpdate(BaseModel):
     # El 'id' no se puede actualizar, por eso no está aquí
     categoria: Optional[str] = None
     central_de_costos: Optional[str] = None
+    nombre_central_costos: Optional[str] = None  # <-- AGREGADO
     area: Optional[str] = None
     correlativo: Optional[str] = None
     cuenta_contable: Optional[str] = None

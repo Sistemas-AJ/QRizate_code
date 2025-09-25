@@ -109,7 +109,7 @@ async function cargarQRs(forceApi = false) {
       }
     }
     // 2. Siempre intentar cargar desde la API
-    const response = await fetch(`http://${ip}:${port}/activos/`);
+  const response = await fetch(`http://${ip}:${port}/activos/?skip=0&limit=100000`);
     if (!response.ok) throw new Error("Network response was not ok");
     const data = await response.json();
     console.log("Datos recibidos de la API:", data); // DEPURADOR
@@ -141,29 +141,59 @@ function aplicarGrilla(filtrado = null) {
   const items = filtrado || qrRawData;
   const totalItems = items.length;
   const numPages = Math.ceil(totalItems / itemsPerPage);
-  let actualPage = 0;
-  let idx = 0;
+  // --- PAGINATION STATE ---
+  if (typeof window.qrCurrentPage === 'undefined') window.qrCurrentPage = 1;
+  let actualPage = window.qrCurrentPage;
+  // --- PAGINATION CONTROLS ---
+  let pagControls = document.getElementById('qr-pagination-controls');
+  if (!pagControls) {
+    pagControls = document.createElement('div');
+    pagControls.id = 'qr-pagination-controls';
+    pagControls.style.textAlign = 'center';
+    pagControls.style.margin = '10px 0';
+    previewContainer.parentElement.insertBefore(pagControls, previewContainer.nextSibling);
+  }
+  pagControls.innerHTML = `
+    <button id="qr-prev-page">&lt; Anterior</button>
+    <span>Página <b id="qr-page-num">${actualPage}</b> de <b id="qr-page-total">${numPages}</b></span>
+    <button id="qr-next-page">Siguiente &gt;</button>
+    <input id="qr-go-page" type="number" min="1" max="${numPages}" value="${actualPage}" style="width:50px;">
+    <button id="qr-go-page-btn">Ir</button>
+  `;
+  document.getElementById('qr-prev-page').onclick = function() {
+    if (window.qrCurrentPage > 1) { window.qrCurrentPage--; aplicarGrilla(filtrado); }
+  };
+  document.getElementById('qr-next-page').onclick = function() {
+    if (window.qrCurrentPage < numPages) { window.qrCurrentPage++; aplicarGrilla(filtrado); }
+  };
+  document.getElementById('qr-go-page-btn').onclick = function() {
+    let val = parseInt(document.getElementById('qr-go-page').value);
+    if (val >= 1 && val <= numPages) { window.qrCurrentPage = val; aplicarGrilla(filtrado); }
+  };
+  // --- RENDER ONLY CURRENT PAGE ---
+  let idx = (actualPage - 1) * itemsPerPage;
+  const endIdx = Math.min(idx + itemsPerPage, totalItems);
   const plantillaJSON = localStorage.getItem('editor_json_template');
-  while (idx < totalItems) {
-    const sheet = document.createElement('div');
-    sheet.className = 'a4-sheet';
-    const grid = document.createElement('div');
-    grid.className = 'qr-grid';
-    grid.style.height = '100%';
-    grid.style.display = 'grid';
-    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-    grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-    grid.style.gap = '0';
-    sheet.appendChild(grid);
-    previewContainer.appendChild(sheet);
-    const gridRect = grid.getBoundingClientRect();
-    const cellWidth = gridRect.width / cols || 180;
-    const cellHeight = gridRect.height / rows || 180;
-    let tieneQR = false;
-    for (let i = 0; i < itemsPerPage; i++) {
-      const div = document.createElement('div');
-      div.className = 'qr-item';
-      if (idx < totalItems && items[idx] && typeof items[idx] === 'object') {
+  const sheet = document.createElement('div');
+  sheet.className = 'a4-sheet';
+  const grid = document.createElement('div');
+  grid.className = 'qr-grid';
+  grid.style.height = '100%';
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+  grid.style.gap = '0';
+  sheet.appendChild(grid);
+  previewContainer.appendChild(sheet);
+  const gridRect = grid.getBoundingClientRect();
+  const cellWidth = gridRect.width / cols || 180;
+  const cellHeight = gridRect.height / rows || 180;
+  let tieneQR = false;
+  for (let cell = 0; cell < itemsPerPage; cell++) {
+    const i = idx + cell;
+    const div = document.createElement('div');
+    div.className = 'qr-item';
+    if (i < totalItems && items[i] && typeof items[i] === 'object') {
         if (plantillaJSON && window.fabric) {
           let plantillaObjOriginal;
           try {
@@ -202,7 +232,7 @@ function aplicarGrilla(filtrado = null) {
           canvasTmp.width = cellWidth;
           canvasTmp.height = cellHeight;
           const fabricCanvas = new window.fabric.Canvas(canvasTmp, { width: cellWidth, height: cellHeight });
-          const itemActual = items[idx];
+          const itemActual = items[i];
           fabricCanvas.loadFromJSON(plantillaObj, function() {
             const objs = fabricCanvas.getObjects();
             let qrPromises = [];
@@ -236,8 +266,6 @@ function aplicarGrilla(filtrado = null) {
                     // Centra el QR en el área del textbox
                     const centerLeft = objs[j].left + ((qrWidth - qrSize) / 2);
                     const centerTop = objs[j].top + ((qrHeight - qrSize) / 2);
-                    console.log('[QR DEBUG] Celda:', idx, 'Textbox width:', objs[j].width, 'Textbox height:', objs[j].height, 'scaleX:', objs[j].scaleX, 'scaleY:', objs[j].scaleY, 'padding:', objs[j].padding);
-                    console.log('[QR DEBUG] Celda:', idx, 'QR width:', qrSize, 'QR height:', qrSize);
                     const qrCanvas = document.createElement('canvas');
                     qrCanvas.width = qrSize;
                     qrCanvas.height = qrSize;
@@ -251,7 +279,6 @@ function aplicarGrilla(filtrado = null) {
                       scaleX: 1,
                       scaleY: 1,
                     });
-                    console.log('[QR DEBUG] Celda:', idx, 'QR fabric image left:', qrImg.left, 'top:', qrImg.top, 'width:', qrImg.width, 'height:', qrImg.height, 'scaleX:', qrImg.scaleX, 'scaleY:', qrImg.scaleY);
                     fabricCanvas.remove(objs[j]);
                     fabricCanvas.add(qrImg);
                     resolve();
@@ -261,9 +288,15 @@ function aplicarGrilla(filtrado = null) {
                 const textoOriginal = objs[j].text;
                 objs[j].set('text', objs[j].text.replace(/{{\s*(\w+)\s*}}/g, function(match, p1) {
                   const valor = (itemActual && itemActual[p1] !== undefined && itemActual[p1] !== null) ? itemActual[p1] : match;
-                  console.log(`Reemplazando ${match} por`, valor, 'en', textoOriginal, 'del item', itemActual); // DEPURADOR
                   return valor;
                 }));
+                // Solo centrar el textbox que originalmente tenía {{codigo_activo}}
+                if (objs[j].type === 'textbox' && textoOriginal.includes('{{codigo_activo}}')) {
+                  objs[j].set('textAlign', 'center');
+                  if (objs[j].width < 250) {
+                    objs[j].set('width', 250);
+                  }
+                }
               }
             }
             Promise.all([...qrPromises, ...imgPromises]).then(() => {
@@ -292,8 +325,8 @@ function aplicarGrilla(filtrado = null) {
           qrDiv.style.height = cellHeight + 'px';
           div.appendChild(qrDiv);
           let qrValue = '';
-          if (items[idx]) {
-            qrValue = items[idx].url;
+          if (items[i]) {
+            qrValue = items[i].url;
           }
           const c = document.createElement('canvas');
           qrDiv.appendChild(c);
@@ -303,13 +336,10 @@ function aplicarGrilla(filtrado = null) {
       } else {
         div.innerHTML = '';
       }
-      grid.appendChild(div);
-      idx++;
-    }
-    if (!tieneQR) {
-      previewContainer.removeChild(sheet);
-    }
-    actualPage++;
+    grid.appendChild(div);
+  }
+  if (!tieneQR) {
+    previewContainer.removeChild(sheet);
   }
 }
 
