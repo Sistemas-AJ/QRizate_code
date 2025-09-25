@@ -388,7 +388,28 @@ function parseAndSendExcel(file) {
             if (validRows.length === 0) {
                 return showNotification('Ninguna fila en el Excel tiene los campos requeridos (correlativo, sede, area).', 'error');
             }
-            await sendBulkDataToApi(validRows);
+            // Detectar correlativos duplicados en el Excel
+            const correlativos = validRows.map(r => r.correlativo);
+            const duplicados = correlativos.filter((item, idx) => correlativos.indexOf(item) !== idx && correlativos.indexOf(item) < idx);
+            let mensajeDuplicados = '';
+            let unicos = validRows;
+            if (duplicados.length > 0) {
+                mensajeDuplicados = `No se generaron los QR para los siguientes correlativos porque están repetidos en el Excel: ${[...new Set(duplicados)].join(", ")}`;
+                // Filtrar para enviar solo los no duplicados
+                unicos = validRows.filter((row, idx, arr) => arr.findIndex(r => r.correlativo === row.correlativo) === idx);
+            }
+            // Enviar y esperar respuesta del backend
+            const backendResult = await sendBulkDataToApi(unicos);
+            // Si hubo duplicados en el Excel, mostrar la notificación junto con los del backend
+            if (mensajeDuplicados) {
+                showNotification(mensajeDuplicados, 'error');
+            }
+            if (backendResult && backendResult.repetidos && backendResult.repetidos.length > 0) {
+                showNotification(`No se generaron los QR para los siguientes correlativos porque ya existen en la base de datos: ${backendResult.repetidos.join(", ")}`, 'error');
+            }
+            if (backendResult && backendResult.exitosos && backendResult.exitosos.length > 0) {
+                showNotification(`Se han enviado ${backendResult.exitosos.length} QR correctamente.`, 'success');
+            }
         } catch (error) {
             console.error('Error procesando el Excel:', error);
             showNotification(`Error al procesar el archivo: ${error.message}`, 'error');
@@ -443,46 +464,25 @@ async function sendBulkDataToApi(data) {
         if (!response.ok) {
             const errorText = await response.text();
             showNotification(errorText || `Error del servidor: ${response.status}`, 'error');
-            return;
+            return null;
         }
         const result = await response.json();
         console.log('Respuesta de bulk-create:', result);
-        showNotification('Datos del Excel cargados correctamente.', 'success');
-
-        // Mostrar las URLs recibidas del backend
+        const bulkQrContainer = document.getElementById('bulk-qr-container');
+        if (bulkQrContainer) bulkQrContainer.innerHTML = '';
+        let repetidos = [];
+        let exitosos = [];
         if (Array.isArray(result)) {
-            const bulkQrContainer = document.getElementById('bulk-qr-container');
-            bulkQrContainer.innerHTML = '';
-            result.forEach((item, idx) => {
-                if (item.url) {
-                    const qrDiv = document.createElement('div');
-                    qrDiv.style.marginBottom = '20px';
-
-                    const canvas = document.createElement('canvas');
-                    new QRious({
-                        element: canvas,
-                        value: item.url,
-                        size: 150,
-                    });
-                    qrDiv.appendChild(canvas);
-
-                    const urlDiv = document.createElement('div');
-                    urlDiv.style.wordBreak = 'break-all';
-                    urlDiv.textContent = `URL: ${item.url}`;
-                    qrDiv.appendChild(urlDiv);
-
-                    bulkQrContainer.appendChild(qrDiv);
-                }
-            });
+            repetidos = result.filter(r => r.detail && r.detail.includes('correlativo ya existe')).map(r => r.correlativo);
+            exitosos = result.filter(r => r.url);
         }
-
+        return { repetidos, exitosos };
     } catch (error) {
         console.error('Error enviando datos a la API:', error);
         showNotification(`Error al cargar datos: ${error.message}`, 'error');
+        return null;
     }
 }
-
-
 // --- LÓGICA DE GENERACIÓN DE QR (VERSIÓN ÚNICA Y CORRECTA) ---
 
 

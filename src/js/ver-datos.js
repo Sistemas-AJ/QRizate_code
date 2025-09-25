@@ -50,7 +50,7 @@ function getIpPort() {
 function cargarDatos() {
   const {ip, port} = getIpPort();
   document.getElementById('tabla-datos').innerHTML = '<em>Cargando...</em>';
-  fetch(`http://${ip}:${port}/activos/`)
+  fetch(`http://${ip}:${port}/activos/?skip=0&limit=100000`)
     .then(res => res.ok ? res.json() : res.text().then(t => {throw new Error(t)}))
     .then(data => {
       datosGlobal = Array.isArray(data) ? data : [];
