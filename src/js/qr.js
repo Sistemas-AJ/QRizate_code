@@ -203,6 +203,12 @@ function loadTemplateFromData(jsonData) {
     historyIndex = -1;
     saveState();
     savedHistoryIndex = historyIndex;
+    // Selecciona el primer objeto y muestra la barra de herramientas
+    const objs = canvas.getObjects();
+    if (objs.length > 0) {
+      canvas.setActiveObject(objs[0]);
+      updateFloatingToolbar();
+    }
   });
 }
 
@@ -672,6 +678,18 @@ function updateFloatingToolbar() {
     document.getElementById("text-italic").checked = activeObject.fontStyle === 'italic';
   }
 }
+
+document.getElementById("text-align").addEventListener("change", function () {
+  const activeObject = canvas.getActiveObject();
+  if (activeObject && ['textbox', 'i-text', 'text'].includes(activeObject.type)) {
+    // Forzar un ancho mínimo para que la alineación se note
+    if (activeObject.width < 250) {
+      activeObject.set("width", 250);
+    }
+    activeObject.set("textAlign", this.value);
+    canvas.renderAll();
+  }
+});
 
 function changeCase(targetCase) {
     const activeObject = canvas.getActiveObject();
