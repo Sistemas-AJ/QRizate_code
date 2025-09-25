@@ -15,10 +15,11 @@
     <span class="app-bar__title">Generador de QR</span>
 
     <div style="flex-grow: 1"></div>
-    <input type="text" id="input-sede-id" placeholder="ID de Sede" style="margin-left: 20px; max-width: 150px" />
-    <button class="app-bar-btn" id="guardar-sede-btn">
-      Nombre de compañia
-    </button>
+    <div class="sede-input-container">
+      <label for="input-sede-id" class="sede-label">ID de Sede</label>
+      <input type="text" id="input-sede-id" class="sede-input" placeholder="Ej: UPAO-TRUJILLO" />
+      <button class="app-bar-btn sede-btn" id="guardar-sede-btn">Guardar Sede</button>
+    </div>
 
     <button class="app-bar-btn" onclick="window.location.href='imprimir-qr.html'">
       Ver QR

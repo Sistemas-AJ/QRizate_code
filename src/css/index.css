@@ -1,3 +1,50 @@
+/* === Estilo mejorado para el campo ID de Sede === */
+.sede-input-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 10px 18px;
+  box-shadow: 0 2px 8px rgba(0,59,103,0.08);
+  margin-left: 20px;
+}
+.sede-label {
+  font-weight: 600;
+  color: #003B67;
+  font-size: 1em;
+  margin-right: 6px;
+}
+.sede-input {
+  padding: 10px 16px;
+  font-size: 15px;
+  border: 2px solid #edf2f7;
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  max-width: 180px;
+}
+.sede-input:focus {
+  border-color: #FF6B00;
+  box-shadow: 0 4px 12px rgba(255, 107, 0, 0.1);
+}
+.sede-btn {
+  background: #003B67;
+  color: #fff;
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 10px 22px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0,59,103,0.12);
+  transition: all 0.3s ease;
+}
+.sede-btn:hover, .sede-btn:focus {
+  background: #FF6B00;
+  box-shadow: 0 4px 16px rgba(255, 107, 0, 0.18);
+  transform: translateY(-2px);
+}
 :root {
   --upao-blue: #003B67;
   --upao-gold: #B4975A;

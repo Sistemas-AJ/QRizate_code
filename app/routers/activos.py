@@ -230,6 +230,24 @@ def detalle_activo_html(codigo: str, request: Request):
 
 @router.post("/bulk-create", response_model=List[ActivoResponse], status_code=201)
 def crear_o_actualizar_activos_en_lote(activos: List[ActivoCreate], request: Request, db: Session = Depends(get_db)):
+    # Detectar correlativos repetidos en el Excel
+    correlativos_excel = [a.correlativo for a in activos if a.correlativo]
+    repetidos_excel = set([c for c in correlativos_excel if correlativos_excel.count(c) > 1])
+    # Detectar correlativos ya existentes en la base de datos
+    if correlativos_excel:
+        existentes_db = db.query(Activo.correlativo).filter(Activo.correlativo.in_(correlativos_excel)).all()
+        existentes_db = set([c[0] for c in existentes_db if c[0]])
+    else:
+        existentes_db = set()
+    # Unir todos los repetidos
+    todos_repetidos = repetidos_excel.union(existentes_db)
+    # Si hay repetidos, devolver mensaje controlado
+    if todos_repetidos:
+        return {
+            "detail": "Sus QR no se generaron porque hay correlativos repetidos.",
+            "repeated_correlativos": list(todos_repetidos)
+        }
+    # Si no hay repetidos, crear los activos
     creados = []
     actualizados = []
     errores = []
@@ -244,8 +262,8 @@ def crear_o_actualizar_activos_en_lote(activos: List[ActivoCreate], request: Req
         if not data.get('codigo_activo'):
             data['codigo_activo'] = f"{correlativo}-{area}-{sede}"
         if not data.get('url'):
-            public_url_base = request.app.state.PUBLIC_URL_BASE  # <-- corregido el nombre
-            sede_id_global = request.app.state.SEDE_ID
+            public_url_base = getattr(request.app.state, 'PUBLIC_URL_BASE', '')
+            sede_id_global = getattr(request.app.state, 'SEDE_ID', '')
             data['url'] = f"{public_url_base}?sede={sede_id_global}&id={data['id']}"
         db_activo = db.query(Activo).filter(Activo.id == data['id']).first()
         if db_activo:
@@ -261,7 +279,11 @@ def crear_o_actualizar_activos_en_lote(activos: List[ActivoCreate], request: Req
     except Exception as e:
         db.rollback()
         errores.append(str(e))
-    return [ActivoResponse.model_validate(a) for a in creados + actualizados]
+        return {
+            "detail": "Sus QR no se generaron porque ocurrió un error inesperado.",
+            "errores": errores
+        }
+    return [ActivoResponse.model_validate(a) for a in creados] + [ActivoResponse.model_validate(a) for a in actualizados]
 
 @router.get("/stats/", response_model=StatsResponse)
 def obtener_estadisticas(db: Session = Depends(get_db)):

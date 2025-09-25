@@ -353,6 +353,71 @@ function updateConnectionStatus() {
 
 
 // --- LÓGICA DE CARGA DE EXCEL (Sin cambios) ---
+// --- LÓGICA DE CARGA MASIVA Y NOTIFICACIÓN MEJORADA ---
+async function handleBulkExcelUpload(activosData) {
+    const apiUrl = getApiBaseUrl() + '/activos/bulk-create';
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(activosData),
+        });
+        let result = null;
+        try {
+            result = await response.json();
+        } catch (e) {
+            showNotification('No se pudo procesar la carga masiva tiene correlativos repetidos.', 'error');
+            return;
+        }
+        if (response.ok) {
+            if (Array.isArray(result)) {
+                showNotification('Se han enviado todos sus QR correctamente.', 'success');
+            } else if (result && result.detail && result.repeated_correlativos) {
+                const repetidos = result.repeated_correlativos.join(', ');
+                showNotification(`No se generaron los siguientes QR porque el correlativo ya está repetido: ${repetidos}`, 'error');
+            } else if (result && result.detail) {
+                showNotification(result.detail, 'error');
+            } else {
+                showNotification('No se pudo procesar la carga masiva tiene correlativos repetidos.', 'error');
+            }
+        } else {
+            if (result && result.detail && result.repeated_correlativos) {
+                const repetidos = result.repeated_correlativos.join(', ');
+                showNotification(`No se generaron los siguientes QR porque el correlativo ya está repetido: ${repetidos}`, 'error');
+            } else if (result && result.detail) {
+                showNotification(result.detail, 'error');
+            } else {
+                showNotification('Error de conexión al servidor.', 'error');
+            }
+        }
+    } catch (err) {
+        showNotification('Error de conexión al servidor.', 'error');
+    }
+}
+
+// --- INTEGRACIÓN CON EL INPUT DE EXCEL ---
+// Unificar lógica: usar solo excel-upload
+document.addEventListener('DOMContentLoaded', function() {
+    const excelUpload = document.getElementById('excel-upload');
+    if (excelUpload) {
+        excelUpload.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(evt) {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const activosData = XLSX.utils.sheet_to_json(sheet);
+                await handleBulkExcelUpload(activosData);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+});
 
 function handleExcelUpload(event) {
     const file = event.target.files[0];
@@ -470,12 +535,9 @@ async function sendBulkDataToApi(data) {
         console.log('Respuesta de bulk-create:', result);
         const bulkQrContainer = document.getElementById('bulk-qr-container');
         if (bulkQrContainer) bulkQrContainer.innerHTML = '';
-        let repetidos = [];
-        let exitosos = [];
-        if (Array.isArray(result)) {
-            repetidos = result.filter(r => r.detail && r.detail.includes('correlativo ya existe')).map(r => r.correlativo);
-            exitosos = result.filter(r => r.url);
-        }
+        // Nuevo formato: {creados, actualizados, correlativos_repetidos, errores}
+        let repetidos = result.correlativos_repetidos || [];
+        let exitosos = result.creados || [];
         return { repetidos, exitosos };
     } catch (error) {
         console.error('Error enviando datos a la API:', error);
