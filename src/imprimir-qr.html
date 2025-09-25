@@ -26,10 +26,27 @@
         <label for="grid-cols">Columnas:</label>
         <input type="number" id="grid-cols" min="1" max="5" value="5">
       </div>
-      <button onclick="aplicarGrilla()" class="btn btn-primary">Aplicar grilla</button>
-      <button onclick="window.print()" class="btn btn-success">Imprimir</button>
-      <button onclick="guardarComoPDF()" id="btn-pdf" class="btn btn-secondary">Guardar como PDF</button>
-      <button onclick="window.location.href='index.html'" class="btn btn-light">Inicio</button>
+      <div class="panel-group" id="print-mode-group">
+        <label for="print-mode">Modo de impresión/exportación:</label>
+        <select id="print-mode" style="width: 100%; margin-bottom: 10px;">
+          <option value="all">Todos los QR</option>
+          <option value="single">Un QR específico</option>
+          <option value="range">Por hoja</option>
+        </select>
+        <div id="single-qr-controls" style="display:none; margin-bottom:10px;">
+          <label for="single-qr-index">N° QR a imprimir/exportar:</label>
+          <input type="number" id="single-qr-index" min="1" value="1" style="width: 80px;">
+        </div>
+        <div id="range-qr-controls" style="display:none; margin-bottom:10px;">
+          <label>Rango de hojas:</label>
+          <input type="number" id="pdf-page-start" min="1" value="1" style="width: 60px;"> hasta
+          <input type="number" id="pdf-page-end" min="1" value="1" style="width: 60px;">
+        </div>
+      </div>
+        <button onclick="aplicarGrilla()" class="btn btn-primary">Aplicar grilla</button>
+        <button id="btn-print" class="btn btn-success">Imprimir</button>
+        <button onclick="guardarComoPDF()" id="btn-pdf" class="btn btn-secondary">Guardar como PDF</button>
+        <button onclick="window.location.href='index.html'" class="btn btn-light">Inicio</button>
     </div>
     <div class="panel-preview">
       <div id="preview-container">

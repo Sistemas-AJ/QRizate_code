@@ -23,6 +23,7 @@ function intentarCargarQRsElectron() {
   }
 }
 window.addEventListener('DOMContentLoaded', function() {
+
   if (window.electronAPI && window.electronAPI.onSetApiPort) {
     window.electronAPI.onSetApiPort(setElectronPort);
   }
@@ -32,6 +33,45 @@ window.addEventListener('DOMContentLoaded', function() {
   // Si no es Electron, cargar QRs directamente
   if (!(window.electronAPI && (window.electronAPI.onSetApiPort || window.electronAPI.onSetLocalIp))) {
     if (typeof cargarQRs === 'function') cargarQRs();
+  }
+
+  // --- AGREGAR SELECTOR DE MODO DE IMPRESIÓN ---
+  const printModeGroup = document.getElementById('print-mode-group');
+  if (printModeGroup) {
+    printModeGroup.innerHTML = `
+      <label for="print-mode-select" style="color:#003cb3;font-weight:600;">Modo de impresión/exportación:</label>
+      <select id="print-mode-select" style="width:100%;margin-bottom:12px;">
+        <option value="por-hoja">Por hoja</option>
+        <option value="por-qr">Por QR</option>
+        <option value="todos">Todos</option>
+      </select>
+      <div id="print-mode-controls"></div>
+    `;
+    const printModeSelect = document.getElementById('print-mode-select');
+    const printModeControls = document.getElementById('print-mode-controls');
+
+    function renderPrintModeControls(mode) {
+      if (!printModeControls) return;
+      if (mode === 'por-hoja') {
+        printModeControls.innerHTML = `
+          <label for="page-range-input" style="font-weight:500;">Rango de páginas:</label>
+          <input type="text" id="page-range-input" placeholder="Ej: 1-3" style="width:100%;margin-bottom:8px;">
+        `;
+      } else if (mode === 'por-qr') {
+        printModeControls.innerHTML = `
+          <label for="single-qr-input" style="font-weight:500;">Código QR único:</label>
+          <input type="text" id="single-qr-input" placeholder="Ej: QR-123" style="width:100%;margin-bottom:8px;">
+        `;
+      } else {
+        printModeControls.innerHTML = '';
+      }
+    }
+
+    // Inicializar controles según el valor actual
+    renderPrintModeControls(printModeSelect.value);
+    printModeSelect.addEventListener('change', function() {
+      renderPrintModeControls(this.value);
+    });
   }
 });
 
@@ -350,15 +390,45 @@ async function guardarComoPDF() {
   btn.innerHTML = 'Generando...';
   const sheets = Array.from(document.querySelectorAll('.a4-sheet'));
   if (sheets.length === 0) {
-    alert("No hay QRs para generar el PDF.");
+    showNotification("No hay QRs para generar el PDF.", 'error');
     btn.disabled = false;
     btn.innerHTML = originalText;
     return;
   }
+  // Obtener modo de impresión/exportación
+  const printMode = document.getElementById('print-mode');
+  let sheetsToExport = [];
+  let filename = 'codigos-qr.pdf';
+  if (printMode) {
+    if (printMode.value === 'single') {
+      const idx = parseInt(document.getElementById('single-qr-index').value) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= sheets.length) {
+        showNotification('Número de QR inválido.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        return;
+      }
+      sheetsToExport = [sheets[idx]];
+      filename = `qr-hoja-${idx+1}.pdf`;
+    } else if (printMode.value === 'range') {
+      let start = parseInt(document.getElementById('pdf-page-start').value);
+      let end = parseInt(document.getElementById('pdf-page-end').value);
+      start = Math.max(1, start);
+      end = Math.min(sheets.length, end);
+      if (start > end) [start, end] = [end, start];
+      sheetsToExport = sheets.slice(start-1, end);
+      filename = `codigos-qr-hojas-${start}-a-${end}.pdf`;
+    } else {
+      sheetsToExport = sheets;
+      filename = `codigos-qr-todas.pdf`;
+    }
+  } else {
+    sheetsToExport = sheets;
+  }
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  for (let i = 0; i < sheets.length; i++) {
-    const sheet = sheets[i];
+  for (let i = 0; i < sheetsToExport.length; i++) {
+    const sheet = sheetsToExport[i];
     await new Promise(res => setTimeout(res, 200));
     const canvas = await html2canvas(sheet, { scale: 2 });
     const imgData = canvas.toDataURL('image/png');
@@ -367,12 +437,79 @@ async function guardarComoPDF() {
     if (i > 0) pdf.addPage();
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
   }
-  pdf.save(`codigos-qr (${sheets.length} hojas).pdf`);
+  pdf.save(filename);
   btn.disabled = false;
   btn.innerHTML = originalText;
+// Nueva función para imprimir según el modo seleccionado
+async function imprimirSegunModo() {
+  const btn = document.getElementById('btn-print');
+  btn.disabled = true;
+  const sheets = Array.from(document.querySelectorAll('.a4-sheet'));
+  const printMode = document.getElementById('print-mode');
+  let sheetsToPrint = [];
+  if (printMode) {
+    if (printMode.value === 'single') {
+      const idx = parseInt(document.getElementById('single-qr-index').value) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= sheets.length) {
+        showNotification('Número de QR inválido.', 'error');
+        btn.disabled = false;
+        return;
+      }
+      sheetsToPrint = [sheets[idx]];
+    } else if (printMode.value === 'range') {
+      let start = parseInt(document.getElementById('pdf-page-start').value);
+      let end = parseInt(document.getElementById('pdf-page-end').value);
+      start = Math.max(1, start);
+      end = Math.min(sheets.length, end);
+      if (start > end) [start, end] = [end, start];
+      sheetsToPrint = sheets.slice(start-1, end);
+    } else {
+      sheetsToPrint = sheets;
+    }
+  } else {
+    sheetsToPrint = sheets;
+  }
+  // Crear un contenedor temporal para imprimir solo los seleccionados
+  const printContainer = document.createElement('div');
+  printContainer.style.display = 'none';
+  sheetsToPrint.forEach(sheet => {
+    printContainer.appendChild(sheet.cloneNode(true));
+  });
+  document.body.appendChild(printContainer);
+  const originalBody = document.body.innerHTML;
+  document.body.innerHTML = printContainer.innerHTML;
+  window.print();
+  document.body.innerHTML = originalBody;
+  printContainer.remove();
+  btn.disabled = false;
+}
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Asignar evento al botón de imprimir
+  const btnPrint = document.getElementById('btn-print');
+  if (btnPrint) {
+    btnPrint.addEventListener('click', imprimirSegunModo);
+  }
+  // Mostrar/ocultar controles según el modo seleccionado
+  const printMode = document.getElementById('print-mode');
+  const singleQrControls = document.getElementById('single-qr-controls');
+  const rangeQrControls = document.getElementById('range-qr-controls');
+  if (printMode && singleQrControls && rangeQrControls) {
+    printMode.addEventListener('change', function() {
+      if (printMode.value === 'single') {
+        singleQrControls.style.display = '';
+        rangeQrControls.style.display = 'none';
+      } else if (printMode.value === 'range') {
+        singleQrControls.style.display = 'none';
+        rangeQrControls.style.display = '';
+      } else {
+        singleQrControls.style.display = 'none';
+        rangeQrControls.style.display = 'none';
+      }
+    });
+    printMode.dispatchEvent(new Event('change'));
+  }
   const input = document.getElementById('qr-id-input');
   if (input) {
     input.addEventListener('input', function() {
