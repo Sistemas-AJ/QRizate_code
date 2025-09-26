@@ -1,3 +1,10 @@
+/* Limitar ancho de textarea y input en panel de configuración */
+.panel-config-fixed textarea,
+.panel-config-fixed input[type="text"] {
+  max-width: 220px;
+  width: 100%;
+  box-sizing: border-box;
+}
 .a4-sheet {
   width: 210mm;
   min-height: 297mm;
@@ -27,8 +34,15 @@
   z-index: 1500;
   margin: 0;
   height: 100vh;
-  min-width: 260px;
-  max-width: 320px;
+  min-width: 220px;
+  max-width: 260px;
+/* Limitar ancho y quitar scroll a .panel-group */
+.panel-group {
+  max-width: 240px;
+  width: 100%;
+  overflow: visible !important;
+  box-sizing: border-box;
+}
   box-shadow: 2px 0 12px #0001;
   border-radius: 0 12px 12px 0;
   display: flex;
@@ -36,6 +50,7 @@
   justify-content: flex-start;
   align-items: stretch;
   padding-top: 32px;
+  overflow: visible !important;
 }
 .main-flex {
   margin-left: 320px;
@@ -124,4 +139,49 @@
   @page {
     margin: 0;
   }
+}
+
+/* Mejorar diseño del paginador */
+#qr-pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 10px 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 2px 8px #003b6712;
+  font-size: 16px;
+}
+
+#qr-pagination-controls button {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #003cb3;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#qr-pagination-controls button:disabled {
+  background: #b0b8c1;
+  cursor: not-allowed;
+}
+
+#qr-pagination-controls input[type="number"] {
+  width: 56px;
+  padding: 6px 8px;
+  border: 1px solid #dbe2ea;
+  border-radius: 6px;
+  font-size: 15px;
+  text-align: center;
+  outline: none;
+}
+
+#qr-pagination-controls span {
+  font-size: 16px;
+  font-weight: 500;
 }

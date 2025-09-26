@@ -9,15 +9,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
 </head>
 <body>
   <div class="main-flex">
     <div id="panel-config" class="panel-config panel-config-fixed">
       <h2>Configuración de impresión</h2>
-      <div class="panel-group panel-search">
-        <label for="qr-id-input" class="filtro-codigo-label"><span class="filtro-codigo-icon"><i class="fa-solid fa-magnifying-glass"></i></span>Filtrar por código:</label>
-        <input type="text" id="qr-id-input" class="filtro-codigo-input" placeholder="Ej: QR-...">
-      </div>
       <div class="panel-group">
         <label for="grid-rows">Filas:</label>
         <input type="number" id="grid-rows" min="1" max="7" value="7">
@@ -43,16 +40,92 @@
           <input type="number" id="pdf-page-end" min="1" value="1" style="width: 60px;">
         </div>
       </div>
-        <button onclick="aplicarGrilla()" class="btn btn-primary">Aplicar grilla</button>
+        <button onclick="aplicarGrilla()" class="btn btn-primary">Aplicar</button>
         <button id="btn-print" class="btn btn-success">Imprimir</button>
         <button onclick="guardarComoPDF()" id="btn-pdf" class="btn btn-secondary">Guardar como PDF</button>
         <button onclick="window.location.href='index.html'" class="btn btn-light">Inicio</button>
     </div>
     <div class="panel-preview">
+      <div id="pagination-bar-container"></div>
       <div id="preview-container">
-
       </div>
     </div>
+  </div>
+
+  <!-- Loader visual para exportar PDF con barra de progreso -->
+  <div id="pdf-loader" style="
+    display:none;
+    position:fixed;
+    top:0;left:0;width:100vw;height:100vh;
+    background:rgba(255,255,255,0.92);
+    z-index:99999;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    font-size:2em;
+    color:#003cb3;
+    transition:opacity 0.3s;
+  ">
+    <div style="margin-bottom:24px;">
+      <i class="fas fa-spinner fa-spin"></i> Generando PDF...
+    </div>
+    <div id="pdf-progress-bar" style="
+      width:320px;
+      height:22px;
+      background:#e5eef4;
+      border-radius:12px;
+      overflow:hidden;
+      box-shadow:0 2px 8px #003cb322;
+      margin-bottom:8px;
+      border:1.5px solid #dbe2ea;
+    ">
+      <div id="pdf-progress-inner" style="
+        height:100%;
+        width:0%;
+        background:linear-gradient(90deg,#003cb3 60%,#005ce6 100%);
+        border-radius:12px;
+        transition:width 0.2s;
+      "></div>
+    </div>
+    <div id="pdf-progress-text" style="font-size:1rem;color:#003cb3;">0%</div>
+  </div>
+
+  <!-- Loader visual para imprimir con barra de progreso -->
+  <div id="print-loader" style="
+    display:none;
+    position:fixed;
+    top:0;left:0;width:100vw;height:100vh;
+    background:rgba(255,255,255,0.92);
+    z-index:99999;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    font-size:2em;
+    color:#003cb3;
+    transition:opacity 0.3s;
+  ">
+    <div style="margin-bottom:24px;">
+      <i class="fas fa-spinner fa-spin"></i> Generando tus QR para impresión...
+    </div>
+    <div id="print-progress-bar" style="
+      width:320px;
+      height:22px;
+      background:#e5eef4;
+      border-radius:12px;
+      overflow:hidden;
+      box-shadow:0 2px 8px #003cb322;
+      margin-bottom:8px;
+      border:1.5px solid #dbe2ea;
+    ">
+      <div id="print-progress-inner" style="
+        height:100%;
+        width:0%;
+        background:linear-gradient(90deg,#003cb3 60%,#005ce6 100%);
+        border-radius:12px;
+        transition:width 0.2s;
+      "></div>
+    </div>
+    <div id="print-progress-text" style="font-size:1rem;color:#003cb3;">0%</div>
   </div>
 
   <link rel="stylesheet" href="./css/imprimir.css">
