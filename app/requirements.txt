@@ -6,4 +6,5 @@ qrcode[pil]==7.4.2
 pillow==9.5.0
 python-multipart==0.0.6
 websockets
+pystray
 

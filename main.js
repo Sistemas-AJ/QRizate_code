@@ -37,6 +37,8 @@ function getLocalIp() {
 }
 
 // Función para iniciar el backend de Python
+// main.js - NUEVA VERSIÓN DE startBackend
+
 async function startBackend() {
   try {
     const port = await portfinder.getPortPromise({ port: 8000 });
@@ -45,30 +47,35 @@ async function startBackend() {
     
     const PUBLIC_URL_BASE = 'http://qrizate.systempiura.com/asset.html';
     
-    // Determinar la ruta del script Python
-    const scriptPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'app', 'main.py')
-      : path.join(__dirname, 'app', 'main.py');
+    let command;
+    let args;
 
-    // Detectar ejecutable Python del venv
-    let pythonExe;
-    const venvPath = path.join(__dirname, 'app', '.venv');
-    if (process.platform === 'win32') {
-      pythonExe = path.join(venvPath, 'Scripts', 'python.exe');
+    if (app.isPackaged) {
+      // --- MODO PRODUCCIÓN (APP INSTALADA) ---
+      // La ruta al .exe del backend que empaquetaremos con Inno Setup.
+      command = path.join(process.resourcesPath, 'backend', 'QRizateServer.exe');
+      args = ['--port', port, '--public-url', PUBLIC_URL_BASE];
+      console.log('Modo Producción: Ejecutando backend desde .exe');
+
     } else {
-      pythonExe = path.join(venvPath, 'bin', 'python');
-    }
-    const fs = require('fs');
-    if (!fs.existsSync(pythonExe)) {
-      // Fallback a python global si no existe el venv
-      pythonExe = 'python';
-      console.warn('No se encontró el ejecutable del venv, usando Python global.');
+      // --- MODO DESARROLLO (COMO LO TIENES AHORA) ---
+      // Esto te permite seguir desarrollando cómodamente.
+      const scriptPath = path.join(__dirname, 'app', 'main.py');
+      const venvPython = process.platform === 'win32'
+        ? path.join(__dirname, 'app', '.venv', 'Scripts', 'python.exe')
+        : path.join(__dirname, 'app', '.venv', 'bin', 'python');
+      
+      command = venvPython;
+      args = [scriptPath, '--port', port, '--public-url', PUBLIC_URL_BASE];
+      console.log('Modo Desarrollo: Ejecutando backend desde .py');
     }
 
-    // Iniciar el proceso de Python
-    backendProcess = spawn(pythonExe, [scriptPath, '--port', port, '--public-url', PUBLIC_URL_BASE]);
+    console.log(`Comando a ejecutar: ${command} ${args.join(' ')}`);
 
-    // Manejar la salida del proceso
+    // Iniciar el proceso
+    backendProcess = spawn(command, args);
+
+    // El resto de la función (manejo de stdout, stderr, etc.) se queda exactamente igual.
     backendProcess.stdout.on('data', (data) => {
       console.log(`Backend stdout: ${data}`);
       if (mainWindow) {
