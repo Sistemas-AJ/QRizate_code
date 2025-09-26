@@ -77,32 +77,91 @@ def get_asset_html_from_db(asset_id: str) -> str:
         <html>
         <head>
             <title>Detalle del Activo</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-                body {{ font-family: Arial, sans-serif; margin: 2em; }}
-                table {{ border-collapse: collapse; width: 100%; }}
-                th, td {{ border: 1px solid #ccc; padding: 8px; text-align: left; }}
-                th {{ background-color: #f2f2f2; }}
+                body {{
+                    font-family: 'Segoe UI', Arial, sans-serif;
+                    background: #f8fafc;
+                    margin: 0;
+                    padding: 0;
+                }}
+                .container {{
+                    max-width: 520px;
+                    margin: 40px auto;
+                    background: #fff;
+                    border-radius: 18px;
+                    box-shadow: 0 4px 24px #003cb322;
+                    padding: 32px 28px;
+                }}
+                h2 {{
+                    color: #003cb3;
+                    margin-bottom: 24px;
+                    font-size: 2rem;
+                    text-align: center;
+                    letter-spacing: 1px;
+                }}
+                table {{
+                    border-collapse: collapse;
+                    width: 100%;
+                    background: #f8fafc;
+                    border-radius: 12px;
+                    overflow: hidden;
+                    box-shadow: 0 2px 8px #003cb312;
+                }}
+                th, td {{
+                    padding: 12px 14px;
+                    text-align: left;
+                    font-size: 1rem;
+                }}
+                th {{
+                    background-color: #e5eef4;
+                    color: #003cb3;
+                    font-weight: 600;
+                    width: 38%;
+                    border-bottom: 1.5px solid #dbe2ea;
+                }}
+                td {{
+                    background: #fff;
+                    color: #222;
+                    border-bottom: 1px solid #f0f4f8;
+                }}
+                tr:last-child th, tr:last-child td {{
+                    border-bottom: none;
+                }}
+                @media (max-width: 600px) {{
+                    .container {{
+                        padding: 16px 4px;
+                    }}
+                    h2 {{
+                        font-size: 1.3rem;
+                    }}
+                    th, td {{
+                        padding: 8px 6px;
+                        font-size: 0.95rem;
+                    }}
+                }}
             </style>
         </head>
         <body>
-            <h2>Detalle del Activo</h2>
-            <table>
-                <tr><th>ID</th><td>{activo.id}</td></tr>
-                <tr><th>Correlativo</th><td>{activo.correlativo}</td></tr>
-                <tr><th>Área</th><td>{activo.area}</td></tr>
-                <tr><th>Sede</th><td>{activo.sede}</td></tr>
-                <tr><th>Código Activo</th><td>{activo.codigo_activo}</td></tr>
-                <tr><th>URL</th><td><a href="{activo.url}" target="_blank">{activo.url}</a></td></tr>
-                <tr><th>Categoría</th><td>{activo.categoria}</td></tr>
-                <tr><th>Central de Costos</th><td>{activo.central_de_costos}</td></tr>
-                <tr><th>Cuenta Contable</th><td>{activo.cuenta_contable}</td></tr>
-                <tr><th>Estado</th><td>{activo.estado}</td></tr>
-                <tr><th>Descripción</th><td>{activo.descripcion}</td></tr>
-                <tr><th>Marca</th><td>{activo.marca}</td></tr>
-                <tr><th>Modelo</th><td>{activo.modelo}</td></tr>
-                <tr><th>Número Serie</th><td>{activo.numero_serie}</td></tr>
-                <tr><th>Número Central Costo</th><td>{activo.numero_central_costo}</td></tr>
-            </table>
+            <div class="container">
+                <h2>Detalle del Activo</h2>
+                <table>
+                    <tr><th>ID</th><td>{activo.id}</td></tr>
+                    <tr><th>Correlativo</th><td>{activo.correlativo}</td></tr>
+                    <tr><th>Área</th><td>{activo.area}</td></tr>
+                    <tr><th>Sede</th><td>{activo.sede}</td></tr>
+                    <tr><th>Código Activo</th><td>{activo.codigo_activo}</td></tr>
+                    <tr><th>Categoría</th><td>{activo.categoria}</td></tr>
+                    <tr><th>Central de Costos</th><td>{activo.central_de_costos}</td></tr>
+                    <tr><th>Cuenta Contable</th><td>{activo.cuenta_contable}</td></tr>
+                    <tr><th>Estado</th><td>{activo.estado}</td></tr>
+                    <tr><th>Descripción</th><td>{activo.descripcion}</td></tr>
+                    <tr><th>Marca</th><td>{activo.marca}</td></tr>
+                    <tr><th>Modelo</th><td>{activo.modelo}</td></tr>
+                    <tr><th>Número Serie</th><td>{activo.numero_serie}</td></tr>
+                    <tr><th>Número Central Costo</th><td>{activo.numero_central_costo}</td></tr>
+                </table>
+            </div>
         </body>
         </html>
         """

@@ -193,6 +193,14 @@ def eliminar_activo(activo_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=f"Error al eliminar: {e}")
     return None
 
+@router.delete("/", status_code=204)
+def eliminar_todos_los_activos(db: Session = Depends(get_db)):
+    activos = db.query(Activo).all()
+    for activo in activos:
+        db.delete(activo)
+    db.commit()
+    return None
+
 # --- Endpoints Avanzados ---
 
 def detalle_activo_html(codigo: str, request: Request):
@@ -230,24 +238,22 @@ def detalle_activo_html(codigo: str, request: Request):
 
 @router.post("/bulk-create", response_model=List[ActivoResponse], status_code=201)
 def crear_o_actualizar_activos_en_lote(activos: List[ActivoCreate], request: Request, db: Session = Depends(get_db)):
-    # Detectar correlativos repetidos en el Excel
     correlativos_excel = [a.correlativo for a in activos if a.correlativo]
     repetidos_excel = set([c for c in correlativos_excel if correlativos_excel.count(c) > 1])
-    # Detectar correlativos ya existentes en la base de datos
     if correlativos_excel:
         existentes_db = db.query(Activo.correlativo).filter(Activo.correlativo.in_(correlativos_excel)).all()
         existentes_db = set([c[0] for c in existentes_db if c[0]])
     else:
         existentes_db = set()
-    # Unir todos los repetidos
     todos_repetidos = repetidos_excel.union(existentes_db)
-    # Si hay repetidos, devolver mensaje controlado
     if todos_repetidos:
-        return {
-            "detail": "Sus QR no se generaron porque hay correlativos repetidos.",
-            "repeated_correlativos": list(todos_repetidos)
-        }
-    # Si no hay repetidos, crear los activos
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "detail": "Sus QR no se generaron porque hay correlativos repetidos.",
+                "repeated_correlativos": list(todos_repetidos)
+            }
+        )
     creados = []
     actualizados = []
     errores = []
@@ -256,7 +262,6 @@ def crear_o_actualizar_activos_en_lote(activos: List[ActivoCreate], request: Req
         correlativo = data.get('correlativo', '')
         area = data.get('area', '')
         sede = data.get('sede', '')
-        # Generar id SOLO con correlativo, área y sede
         if not data.get('id'):
             data['id'] = f"{correlativo}{area}{sede}"
         if not data.get('codigo_activo'):
@@ -278,11 +283,13 @@ def crear_o_actualizar_activos_en_lote(activos: List[ActivoCreate], request: Req
         db.commit()
     except Exception as e:
         db.rollback()
-        errores.append(str(e))
-        return {
-            "detail": "Sus QR no se generaron porque ocurrió un error inesperado.",
-            "errores": errores
-        }
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "detail": "Sus QR no se generaron porque ocurrió un error inesperado.",
+                "errores": [str(e)]
+            }
+        )
     return [ActivoResponse.model_validate(a) for a in creados] + [ActivoResponse.model_validate(a) for a in actualizados]
 
 @router.get("/stats/", response_model=StatsResponse)

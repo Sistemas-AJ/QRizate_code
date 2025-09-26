@@ -241,12 +241,12 @@ function editarRegistro(idx) {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(nuevo)
     })
-    .then(res => res.ok ? res.json() : res.text().then(t => {throw new Error(t)}))
-    .then(data => {
-      showNotification('Registro actualizado', 'success');
-      cargarDatos();
-    })
-    .catch(err => showNotification('Error al actualizar: ' + err.message, 'error'));
+      .then(res => res.ok ? res.json() : res.text().then(t => {throw new Error(t)}))
+      .then(data => {
+        showNotification('Registro actualizado', 'success');
+        cargarDatos();
+      })
+      .catch(err => showNotification('Error al actualizar: ' + err.message, 'error'));
   };
   tr.querySelector('.cancel-edit-btn').onclick = function() {
     renderTabla(datosGlobal);
@@ -273,4 +273,25 @@ window.addEventListener('DOMContentLoaded', function() {
   if (recargarBtn) {
     recargarBtn.addEventListener('click', cargarDatos);
   }
+  // Bloque corregido para borrar todo
+  setTimeout(() => {
+    const borrarTodoBtn = document.getElementById('borrar-todo-btn');
+    if (borrarTodoBtn) {
+      borrarTodoBtn.onclick = function() {
+        showConfirm('¿Está seguro que desea BORRAR TODOS sus activos? Esta acción no se puede deshacer.', () => {
+          const {ip, port} = getIpPort();
+          fetch(`http://${ip}:${port}/activos/`, { method: 'DELETE' })
+            .then(res => {
+              if (res.status === 204 || res.ok) {
+                showNotification('Todos los activos fueron eliminados.', 'success');
+                cargarDatos();
+              } else {
+                res.text().then(t => showNotification('Error al borrar todo: ' + t, 'error'));
+              }
+            })
+            .catch(err => showNotification('Error al borrar todo: ' + err.message, 'error'));
+        });
+      };
+    }
+  }, 100);
 });

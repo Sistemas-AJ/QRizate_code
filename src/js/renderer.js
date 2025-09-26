@@ -372,13 +372,19 @@ async function handleBulkExcelUpload(activosData) {
             return;
         }
         if (response.ok) {
-            if (Array.isArray(result)) {
-                showNotification('Se han enviado todos sus QR correctamente.', 'success');
-            } else if (result && result.detail && result.repeated_correlativos) {
+            let mensaje = '';
+            let generados = Array.isArray(result) ? result.length : 0;
+            if (generados > 0) {
+                mensaje += `Se han generado ${generados} QR correctamente.`;
+            }
+            if (result && result.detail && result.repeated_correlativos) {
                 const repetidos = result.repeated_correlativos.join(', ');
-                showNotification(`No se generaron los siguientes QR porque el correlativo ya está repetido: ${repetidos}`, 'error');
+                mensaje += (mensaje ? '\n' : '') + `No se generaron los siguientes QR porque el correlativo ya está repetido: ${repetidos}`;
             } else if (result && result.detail) {
-                showNotification(result.detail, 'error');
+                mensaje += (mensaje ? '\n' : '') + result.detail;
+            }
+            if (mensaje) {
+                showNotification(mensaje, generados > 0 ? 'success' : 'error');
             } else {
                 showNotification('No se pudo procesar la carga masiva tiene correlativos repetidos.', 'error');
             }
@@ -399,25 +405,6 @@ async function handleBulkExcelUpload(activosData) {
 
 // --- INTEGRACIÓN CON EL INPUT DE EXCEL ---
 // Unificar lógica: usar solo excel-upload
-document.addEventListener('DOMContentLoaded', function() {
-    const excelUpload = document.getElementById('excel-upload');
-    if (excelUpload) {
-        excelUpload.addEventListener('change', async function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async function(evt) {
-                const data = new Uint8Array(evt.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
-                const activosData = XLSX.utils.sheet_to_json(sheet);
-                await handleBulkExcelUpload(activosData);
-            };
-            reader.readAsArrayBuffer(file);
-        });
-    }
-});
 
 function handleExcelUpload(event) {
     const file = event.target.files[0];
@@ -551,7 +538,17 @@ async function sendBulkDataToApi(data) {
 // --- UTILIDADES ---
 
 function showNotification(message, type = 'success') {
-    const notificationArea = document.getElementById('notification-area');
+    let notificationArea = document.getElementById('notification-area');
+    if (!notificationArea) {
+        notificationArea = document.createElement('div');
+        notificationArea.id = 'notification-area';
+        notificationArea.style.position = 'fixed';
+        notificationArea.style.top = '20px';
+        notificationArea.style.right = '20px';
+        notificationArea.style.zIndex = '9999';
+        notificationArea.style.pointerEvents = 'none';
+        document.body.appendChild(notificationArea);
+    }
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
 
