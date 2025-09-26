@@ -470,15 +470,33 @@ function parseAndSendExcel(file) {
     reader.readAsArrayBuffer(file);
 }
 
+const fieldMap = {
+    'ID': 'id', 
+    'CATEGORIA': 'categoria', 
+    'CENTRAL DE COSTOS': 'central_de_costos',
+    'Nombre de central de costos': 'nombre_central_costos', 
+    'AREA': 'area', 
+    'Nombre del área': 'nombre_area',
+    'NOMBRE CENTRAL DE COSTOS': 'nombre_central_costos', 
+    'CORRELATIVO': 'correlativo', 
+    'CUENTA CONTABLE': 'cuenta_contable', 
+    'ESTADO': 'estado',
+    'DESCRIPCION': 'descripcion', 
+    'DESCRIPCIÓN': 'descripcion', 
+    'MARCA': 'marca', 
+    'MODELO': 'modelo',
+    'NUMERO DE SERIE': 'numero_serie', 
+    'NÚMERO DE SERIE': 'numero_serie', 
+    'SERIE': 'numero_serie',
+    'CODIGO': 'codigo', 
+    'CÓDIGO': 'codigo', 
+    'SEDE': 'sede', 
+    'URL': 'url',
+    // --- ¡AGREGA ESTA LÍNEA SI NO ESTÁ! ---
+    'NUMERO CENTRAL COSTO': 'numero_central_costo'
+};
+
 function mapExcelRows(rows) {
-    const fieldMap = {
-        'ID': 'id', 'CATEGORIA': 'categoria', 'CENTRAL DE COSTOS': 'central_de_costos',
-        'Nombre de central de costos': 'nombre_central_costos', 'AREA': 'area', 'Nombre del área': 'nombre_area',
-        'NOMBRE CENTRAL DE COSTOS': 'nombre_central_costos', 'CORRELATIVO': 'correlativo', 'CUENTA CONTABLE': 'cuenta_contable', 'ESTADO': 'estado',
-        'DESCRIPCION': 'descripcion', 'DESCRIPCIÓN': 'descripcion', 'MARCA': 'marca', 'MODELO': 'modelo',
-        'NUMERO DE SERIE': 'numero_serie', 'NÚMERO DE SERIE': 'numero_serie', 'SERIE': 'numero_serie',
-        'CODIGO': 'codigo', 'CÓDIGO': 'codigo', 'SEDE': 'sede', 'URL': 'url'
-    };
     return rows.map(row => {
         const mapped = {};
         for (const key in row) {

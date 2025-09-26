@@ -27,5 +27,42 @@
         <div id="tabla-datos" class="tabla-scroll" style="margin-top:8px;"></div>
     </div>
     <script src="./js/ver-datos.js"></script>
+    <script>
+        function mapExcelRows(rows) {
+            const fieldMap = {
+                'ID': 'id', 
+                'CATEGORIA': 'categoria', 
+                'CENTRAL DE COSTOS': 'central_de_costos',
+                'Nombre de central de costos': 'nombre_central_costos', 
+                'AREA': 'area', 
+                'Nombre del área': 'nombre_area',
+                'NOMBRE CENTRAL DE COSTOS': 'nombre_central_costos', 
+                'CORRELATIVO': 'correlativo', 
+                'CUENTA CONTABLE': 'cuenta_contable', 
+                'ESTADO': 'estado',
+                'DESCRIPCION': 'descripcion', 
+                'DESCRIPCIÓN': 'descripcion', 
+                'MARCA': 'marca', 
+                'MODELO': 'modelo',
+                'NUMERO DE SERIE': 'numero_serie', 
+                'NÚMERO DE SERIE': 'numero_serie', 
+                'SERIE': 'numero_serie',
+                'CODIGO': 'codigo', 
+                'CÓDIGO': 'codigo', 
+                'SEDE': 'sede', 
+                'URL': 'url',
+                'NUMERO CENTRAL COSTO': 'numero_central_costo'  // Asegúrate de que esté aquí
+            };
+            return rows.map(row => {
+                const mapped = {};
+                for (const [excelCol, dbField] of Object.entries(fieldMap)) {
+                    if (row[excelCol] !== undefined) {
+                        mapped[dbField] = String(row[excelCol]).trim();
+                    }
+                }
+                return mapped;
+            });
+        }
+    </script>
 </body>
 </html>

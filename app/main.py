@@ -128,7 +128,7 @@ def get_asset_html_from_db(asset_id: str) -> str:
                     <tr><th>Sede</th><td>{activo.sede}</td></tr>
                     <tr><th>Código Activo</th><td>{activo.codigo_activo}</td></tr>
                     <tr><th>Categoría</th><td>{activo.categoria}</td></tr>
-                    <tr><th>Central de Costos</th><td>{activo.central_de_costos}</td></tr>
+                    <tr><th>Nombre Central de Costos</th><td>{activo.nombre_central_costos}</td></tr>
                     <tr><th>Cuenta Contable</th><td>{activo.cuenta_contable}</td></tr>
                     <tr><th>Estado</th><td>{activo.estado}</td></tr>
                     <tr><th>Descripción</th><td>{activo.descripcion}</td></tr>

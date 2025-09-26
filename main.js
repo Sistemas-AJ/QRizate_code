@@ -48,34 +48,37 @@ async function startBackend() {
     const PUBLIC_URL_BASE = 'http://qrizate.systempiura.com/asset.html';
     
     let command;
-    let args;
+    let args = ['--port', port, '--public-url', PUBLIC_URL_BASE]; // Los argumentos son los mismos
 
     if (app.isPackaged) {
-      // --- MODO PRODUCCIÓN (APP INSTALADA) ---
-      // La ruta al .exe del backend que empaquetaremos con Inno Setup.
+      // --- MODO PRODUCCIÓN (SIN CAMBIOS) ---
       command = path.join(process.resourcesPath, 'backend', 'QRizateServer.exe');
-      args = ['--port', port, '--public-url', PUBLIC_URL_BASE];
       console.log('Modo Producción: Ejecutando backend desde .exe');
 
     } else {
-      // --- MODO DESARROLLO (COMO LO TIENES AHORA) ---
-      // Esto te permite seguir desarrollando cómodamente.
+      // --- MODO DESARROLLO (MODIFICADO PARA USAR EL .EXE) ---
+      // Apuntamos directamente a la ruta del .exe generado por PyInstaller
+      command = path.join(__dirname, 'app', 'dist', 'QRizateServer', 'QRizateServer.exe');
+      console.log('Modo Desarrollo: Ejecutando backend desde el .EXE pre-compilado');
+      
+      // Si quieres volver a probar con el script .py, simplemente comenta la línea de arriba
+      // y descomenta las siguientes:
+      /*
       const scriptPath = path.join(__dirname, 'app', 'main.py');
       const venvPython = process.platform === 'win32'
         ? path.join(__dirname, 'app', '.venv', 'Scripts', 'python.exe')
         : path.join(__dirname, 'app', '.venv', 'bin', 'python');
-      
       command = venvPython;
-      args = [scriptPath, '--port', port, '--public-url', PUBLIC_URL_BASE];
+      args.unshift(scriptPath); // Añade el script como primer argumento
       console.log('Modo Desarrollo: Ejecutando backend desde .py');
+      */
     }
 
     console.log(`Comando a ejecutar: ${command} ${args.join(' ')}`);
 
-    // Iniciar el proceso
+    // --- EL RESTO DE LA FUNCIÓN QUEDA IGUAL ---
     backendProcess = spawn(command, args);
 
-    // El resto de la función (manejo de stdout, stderr, etc.) se queda exactamente igual.
     backendProcess.stdout.on('data', (data) => {
       console.log(`Backend stdout: ${data}`);
       if (mainWindow) {
