@@ -649,12 +649,11 @@ async function guardarComoPDF() {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     for (let i = 0; i < sheetsBlock.length; i++) {
-      updatePdfProgress(block, totalBlocks, i, sheetsBlock.length); // Actualiza barra por hoja
-      pdf.addPage();
+      updatePdfProgress(block, totalBlocks, i, sheetsBlock.length);
       const sheet = sheetsBlock[i];
       tempDiv.appendChild(sheet);
       await new Promise(res => setTimeout(res, 80));
-      const canvas = await html2canvas(sheet, { scale: 1 }); // Usa scale 1 para menos peso
+      const canvas = await html2canvas(sheet, { scale: 1 });
       const imgData = canvas.toDataURL('image/png');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
