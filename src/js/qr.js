@@ -954,3 +954,20 @@ function showNotification(message, type = 'info') {
     setTimeout(() => notif.remove(), 400);
   }, 3200);
 }
+
+document.getElementById('guardar-sede-btn').addEventListener('click', async () => {
+    let sedeId = document.getElementById('input-sede-id').value;
+    sedeId = limpiarSedeId(sedeId);
+    if (!sedeId) {
+        showNotification('Ingresa un ID de sede válido (solo letras, números, guiones y guiones bajos).', 'error');
+        return;
+    }
+    document.getElementById('input-sede-id').value = sedeId; // Actualiza el campo con el formato limpio
+    localStorage.setItem('qr_app_sede_id', sedeId);
+    window.electronAPI.setSedeId(sedeId);
+    await guardarConfiguracion();
+    showNotification(`Sede guardada: ${sedeId}`, 'success');
+    // --- ¡AGREGA ESTA LÍNEA PARA LIMPIAR EL INPUT! ---
+    document.getElementById('input-sede-id').value = '';
+});
+

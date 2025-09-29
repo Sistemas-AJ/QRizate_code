@@ -52,7 +52,7 @@ async function startBackend() {
 
     if (app.isPackaged) {
       // --- MODO PRODUCCIÓN (SIN CAMBIOS) ---
-      command = path.join(process.resourcesPath, 'backend', 'QRizateServer.exe');
+      command = path.join(process.resourcesPath, 'app', 'QRizateServer.exe');
       console.log('Modo Producción: Ejecutando backend desde .exe');
 
     } else {
@@ -196,8 +196,8 @@ ipcMain.on('devtools-flash', () => {
 
 // Cuando la app está lista, inicia todo
 app.whenReady().then(async () => {
-  await startBackend();
   createWindow();
+  await startBackend();
   createTray();
 
   app.on('activate', () => {

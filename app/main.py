@@ -1,4 +1,4 @@
-# backend/main.py - VERSIÓN FINAL CON ICONO EN BANDEJA DE SISTEMA
+# backend/main.py - VERSIÓN CORREGIDA Y FINAL
 
 import os
 import sys
@@ -48,25 +48,6 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 # =============================================================================
 
-# --- 1. CONFIGURACIÓN (Tu código original) ---
-VPS_WEBSOCKET_URL = "wss://qrizate.systempiura.com/ws/"
-SEDE_ID = "Oficinas-AJ"
-
-CONFIG_PATH = 'config.json'
-
-def load_config():
-    if not os.path.exists(CONFIG_PATH):
-        return {}
-    with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-def save_config(config_data):
-    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
-        json.dump(config_data, f, indent=4)
-
-config = load_config()
-vps_connection_task = None
-
 # --- CÓDIGO INICIAL (Tu código original) ---
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.settimeout(0)
@@ -85,6 +66,41 @@ local_hostname = get_local_ip()
 APP_DATA_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Local", "QRizate")
 os.makedirs(APP_DATA_DIR, exist_ok=True)
 DATABASE_PATH = os.path.join(APP_DATA_DIR, "QRizate.db")
+
+# --- 1. CONFIGURACIÓN ---
+VPS_WEBSOCKET_URL = "wss://qrizate.systempiura.com/ws/"
+SEDE_ID = "Oficinas-AJ"
+
+# ===== CAMBIO IMPORTANTE AQUÍ =====
+# Guardar el config.json en la carpeta AppData para evitar problemas de permisos
+CONFIG_PATH = os.path.join(APP_DATA_DIR, 'config.json')
+
+def load_config():
+    logging.info(f"Intentando cargar config desde: {CONFIG_PATH}")
+    if not os.path.exists(CONFIG_PATH):
+        logging.warning(f"Archivo config no encontrado")
+        return {}
+    try:
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+            content = f.read()
+            logging.info(f"Contenido crudo del archivo: {content}")
+            config = json.loads(content)
+            logging.info(f"Config cargado: {config}")
+            return config
+    except json.JSONDecodeError as e:
+        logging.error(f"Error de JSON: {e}. Contenido: {content}")
+        return {}
+    except Exception as e:
+        logging.error(f"Error al cargar: {e}")
+        return {}
+
+def save_config(config_data):
+    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(config_data, f, indent=4)
+
+config = load_config()
+vps_connection_task = None
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s',
                     handlers=[logging.FileHandler(os.path.join(APP_DATA_DIR, 'qrizate_backend.log')),
@@ -128,14 +144,14 @@ def get_asset_html_from_db(asset_id: str) -> str:
                     <tr><th>Sede</th><td>{activo.sede}</td></tr>
                     <tr><th>Código Activo</th><td>{activo.codigo_activo}</td></tr>
                     <tr><th>Categoría</th><td>{activo.categoria}</td></tr>
-                    <tr><th>Nombre Central de Costos</th><td>{activo.nombre_central_costos}</td></tr>
+                    <tr><th>Nombre Central de Costos</th><td>{getattr(activo, 'nombre_central_costos', '')}</td></tr>
                     <tr><th>Cuenta Contable</th><td>{activo.cuenta_contable}</td></tr>
                     <tr><th>Estado</th><td>{activo.estado}</td></tr>
                     <tr><th>Descripción</th><td>{activo.descripcion}</td></tr>
                     <tr><th>Marca</th><td>{activo.marca}</td></tr>
                     <tr><th>Modelo</th><td>{activo.modelo}</td></tr>
                     <tr><th>Número Serie</th><td>{activo.numero_serie}</td></tr>
-                    <tr><th>Número Central Costo</th><td>{activo.numero_central_costo}</td></tr>
+                    <tr><th>Número Central Costo</th><td>{getattr(activo, 'numero_central_costo', '')}</td></tr>
                 </table>
             </div>
         </body>
@@ -182,7 +198,7 @@ async def lifespan(app: FastAPI):
         logging.info(f"Configuración encontrada. Conectando automáticamente como Sede: {saved_config['sede_id']}")
         app.state.SEDE_ID = saved_config['sede_id']
         app.state.PUBLIC_URL_BASE = "https://qrizate.systempiura.com/activo"
-        vps_connection_task = asyncio.create_task(connect_to_vps_and_listen(saved_config['sede_id'], saved_config['vps_websocket_url']))
+        vps_connection_task = asyncio.create_task(connect_to_vps_and_listen(saved_config['sede_id'], VPS_WEBSOCKET_URL)) # Usar la URL constante
     else:
         logging.warning("No se encontró configuración de sede. Esperando configuración desde el frontend...")
     yield
@@ -205,17 +221,36 @@ async def configure_sede(data: dict = Body(...)):
     vps_url = data.get("vps_websocket_url", VPS_WEBSOCKET_URL)
     if not sede_id:
         return {"detail": "Falta sede_id"}, 400
-    config = load_config()
-    config["sede_id"] = sede_id
-    config["vps_websocket_url"] = vps_url
-    save_config(config)
+    
+    new_config = {
+        "sede_id": sede_id,
+        "vps_websocket_url": vps_url
+    }
+    save_config(new_config)
+    
     app.state.SEDE_ID = sede_id
     app.state.PUBLIC_URL_BASE = "https://qrizate.systempiura.com/activo"
-    if vps_connection_task:
+    
+    if vps_connection_task and not vps_connection_task.done():
         vps_connection_task.cancel()
+        
     vps_connection_task = asyncio.create_task(connect_to_vps_and_listen(sede_id, vps_url))
     logging.info(f"Sede configurada desde frontend: {sede_id}. Conectando al VPS...")
     return {"sede_id_registrado": sede_id}
+
+@app.post("/reload-config")
+async def reload_config():
+    global config
+    config = load_config()
+    if config.get("sede_id"):
+        app.state.SEDE_ID = config['sede_id']
+        app.state.PUBLIC_URL_BASE = "https://qrizate.systempiura.com/activo"
+        # Reiniciar conexión VPS si es necesario
+        global vps_connection_task
+        if vps_connection_task and not vps_connection_task.done():
+            vps_connection_task.cancel()
+        vps_connection_task = asyncio.create_task(connect_to_vps_and_listen(config['sede_id'], config.get('vps_websocket_url', VPS_WEBSOCKET_URL)))
+    return {"status": "config reloaded", "config": config}
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
@@ -258,15 +293,9 @@ def setup_and_run_tray_icon():
     icon_obj.run()
 
 if __name__ == "__main__":
-    # 1. Creamos un hilo para el servidor. Lo marcamos como 'daemon' para
-    #    que se cierre automáticamente cuando el programa principal (el ícono) termine.
     server_thread = threading.Thread(target=run_server)
     server_thread.daemon = True
-    
-    # 2. Iniciamos el hilo del servidor en segundo plano.
     server_thread.start()
     
-    # 3. Ejecutamos el ícono de la bandeja en el hilo principal.
-    #    Este código se quedará esperando hasta que se haga clic en "Salir".
     logging.info("Mostrando ícono en la bandeja del sistema.")
     setup_and_run_tray_icon()

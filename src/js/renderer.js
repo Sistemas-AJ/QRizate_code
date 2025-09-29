@@ -101,7 +101,11 @@ document.getElementById('guardar-sede-btn').addEventListener('click', async () =
     localStorage.setItem('qr_app_sede_id', sedeId);
     window.electronAPI.setSedeId(sedeId);
     await guardarConfiguracion();
+    // Recargar configuración en el backend después de guardar
+    await fetch(`${getApiBaseUrl()}/reload-config`, { method: 'POST' });
     showNotification(`Sede guardada: ${sedeId}`, 'success');
+    // --- LÍNEA PARA LIMPIAR EL INPUT ---
+    document.getElementById('input-sede-id').value = '';
 });
 
 
@@ -128,7 +132,7 @@ async function guardarConfiguracion() {
     }
 
     try {
-        const response = await fetch('http://localhost:8000/configure', {
+        const response = await fetch(`${getApiBaseUrl()}/configure`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -139,9 +143,11 @@ async function guardarConfiguracion() {
         const result = await response.json();
 
         if (response.ok) {
-            showNotification(`Configuración guardada con éxito. Sus QR contienen la dirección: ${result.sede_id_registrado}`, 'success');
+            // --- ¡AGREGA ESTA LÍNEA! ---
+            mostrarSedeActual();  // Actualiza la barra de la app con la nueva sede
+            showNotification(`Sede guardada: ${nuevaSedeId}`, 'success');
         } else {
-            throw new Error(result.detail || 'Error al guardar la configuración.');
+            showNotification(`Error: ${result.detail || response.statusText}`, 'error');
         }
 
     } catch (error) {

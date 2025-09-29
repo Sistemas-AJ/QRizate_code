@@ -1,6 +1,6 @@
 {
-  "name": "QRizate Software 1.1.2",
-  "version": "1.0.0",
+  "name": "qrizate",
+  "version": "2.0.0",
   "description": "QRizate - QR Code Generator",
   "author": "Adrian Ruiz",
   "main": "main.js",
@@ -19,8 +19,8 @@
     },
     "files": [
       "main.js",
+      "preload.js",
       "src/**/*",
-      "backend/**/*",
       "assets/**/*"
     ],
     "win": {
